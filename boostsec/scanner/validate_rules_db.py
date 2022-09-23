@@ -110,7 +110,7 @@ def validate_description_length(rule: Dict[str, Any]) -> None:
     """Validate rule description length is less than 255 characters."""
     if len(rule["description"]) > 255:
         _log_error_and_exit(
-            f"Rule \"{rule['name']}\" description is too long: \"{rule['description']}\""
+            f"Rule \"{rule['name']}\" has a description longer than 255 characters"
         )
 
 
@@ -135,7 +135,7 @@ def main(rules_db_path: str) -> None:
         _log_error_and_exit("Rules DB is empty")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     parser = argparse.ArgumentParser(description="Process a rule database.")
     parser.add_argument(
         "-r",
