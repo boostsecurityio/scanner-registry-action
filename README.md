@@ -7,7 +7,7 @@ Checks the `rules-db` and `namespace` in the registry repo.
 Add the following to your `.github/workflows/scanner-registry.yml`:
 
 ```yml
-name: Test
+name: Scan Rules DB and Namespaces
 on:
   push:
     branches:
