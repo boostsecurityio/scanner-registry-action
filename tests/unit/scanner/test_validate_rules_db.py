@@ -213,6 +213,17 @@ def test_validate_ref_url_with_invalid_url_exception(
     assert out == 'ERROR: Invalid url: "https://nonexistingwebsite" from rule "test"\n'
 
 
+def test_validate_ref_url_return_404(
+    requests_mock: Mocker, capfd: CaptureFixture[str]
+) -> None:
+    """Test validate_ref_url with invalid url."""
+    requests_mock.get("https://example.com", status_code=404)
+    with pytest.raises(SystemExit):
+        validate_ref_url({"name": "test", "ref": "https://example.com"})
+    out, _ = capfd.readouterr()
+    assert out == 'ERROR: Invalid url: "https://example.com" from rule "test"\n'
+
+
 def test_validate_rules_db_with_valid_rules_db() -> None:
     """Test validate_rules_db with valid rules db."""
     validate_rules_db(yaml.safe_load(_VALID_RULES_DB_STRING))
@@ -251,7 +262,8 @@ def test_validate_rules_db_with_valid_rules_db() -> None:
         ),
         (
             _INVALID_RULES_DB_STRING_EXTRA_PROPERTY,
-            "ERROR: Rules db is invalid: \"Additional properties are not allowed ('extra_property' was unexpected)\"\n",
+            'ERROR: Rules db is invalid: "Additional properties are not allowed '
+            "('extra_property' was unexpected)\"\n",
         ),
     ],
 )
