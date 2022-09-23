@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 from typing import Any, Dict
 
@@ -42,6 +43,17 @@ properties:
       - pretty_name
       - ref
 """
+
+
+def find_rules_db_yaml(rules_db_path: str) -> list:
+    """Find module.yaml files."""
+    rules_db_list = []
+    for root, _, files in os.walk(rules_db_path):
+        for file in files:
+            if file.endswith("rules_db.yaml"):
+                file_path = os.path.join(root, file)
+                rules_db_list.append(file_path)
+    return rules_db_list
 
 
 def _log_error_and_exit(message: str) -> None:
@@ -128,11 +140,15 @@ def validate_rules(rules_db: Dict[str, Any]) -> None:
 
 def main(rules_db_path: str) -> None:
     """Main function."""
-    rule_db = load_yaml_file(rules_db_path)
-    if rule_db:
-        validate_rules(rule_db)
+    if rules_db_list := find_rules_db_yaml(rules_db_path):
+        for rules_db_path in rules_db_list:
+            rules_db = load_yaml_file(rules_db_path)
+            if rules_db:
+                validate_rules(rules_db)
+            else:
+                _log_error_and_exit("Rules DB is empty")
     else:
-        _log_error_and_exit("Rules DB is empty")
+        _log_info("No Rules DB found")
 
 
 if __name__ == "__main__":  # pragma: no cover

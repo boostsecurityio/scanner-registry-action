@@ -4,7 +4,7 @@ inputs:
   rules_db_path:
     description: "Path to the rules database"
     required: false
-    default: "boostsec/rules_database/rule_db.yaml"
+    default: "scanners/"
   modules_path:
     description: "Path to the modules directory"
     required: false

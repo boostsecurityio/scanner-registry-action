@@ -1,8 +1,10 @@
 from pathlib import PosixPath
+from uuid import uuid4
 
 import pytest
 import yaml
 from boostsec.scanner.validate_rules_db import (
+    find_rules_db_yaml,
     load_yaml_file,
     main,
     validate_all_in_category,
@@ -147,6 +149,20 @@ rules:
     extra_property: "extra"
 
 """
+
+
+def __create_rules_db_yaml(tmp_path: PosixPath, rules_db_string: str) -> None:
+    """Create a module.yaml file."""
+    modules_path = tmp_path / uuid4().hex
+    modules_path.mkdir()
+    module_yaml = modules_path / "rules_db.yaml"
+    module_yaml.write_text(rules_db_string)
+
+
+def test_find_rules_db_yaml(tmp_path: PosixPath) -> None:
+    """Test find_rules_db_yaml."""
+    __create_rules_db_yaml(tmp_path, _VALID_RULES_DB_STRING)
+    assert len(find_rules_db_yaml(str(tmp_path))) == 1
 
 
 def test_load_yaml_file(tmp_path: PosixPath) -> None:
@@ -339,7 +355,7 @@ def test_main_with_valid_rules(
     requests_mock.get("http://my.link.com", status_code=200)
     rules_db_path = tmp_path / "rules_db.yaml"
     rules_db_path.write_text(_VALID_RULES_DB_STRING)
-    main(str(rules_db_path))
+    main(str(tmp_path))
     out, _ = capfd.readouterr()
     assert out == "Validating rules...\nRules are valid!\n"
 
@@ -351,6 +367,15 @@ def test_main_with_empty_rules_db(
     rules_db_path = tmp_path / "rules_db.yaml"
     rules_db_path.write_text("")
     with pytest.raises(SystemExit):
-        main(str(rules_db_path))
+        main(str(tmp_path))
     out, _ = capfd.readouterr()
     assert out == "ERROR: Rules DB is empty\n"
+
+
+def test_main_with_without_rules_db(
+    capfd: CaptureFixture[str], tmp_path: PosixPath
+) -> None:
+    """Test main with empty rules db."""
+    main(str(tmp_path))
+    out, _ = capfd.readouterr()
+    assert out == "No Rules DB found\n"
