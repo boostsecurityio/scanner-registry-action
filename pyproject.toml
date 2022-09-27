@@ -3,8 +3,8 @@ name = "scanner-registry-action"
 version = "1.0.0"
 description = "A GitHub Action to scan the Registry repository"
 authors = []
-packages = [{ include = "action" }]
-include = ["action/scanner/py.typed"]
+packages = [{ include = "boostsec" }]
+include = ["boostsec/scanner/py.typed"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
