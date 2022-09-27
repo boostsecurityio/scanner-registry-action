@@ -29,7 +29,7 @@ def get_namespaces_from_module_yaml(modules_list: list) -> list:
     return namespaces_list
 
 
-def __find_duplicated_namespaces(namespaces_list: list) -> list:
+def _find_duplicated_namespaces(namespaces_list: list) -> list:
     """Find duplicated namespaces."""
     duplicates = set()
     for namespace in namespaces_list:
@@ -41,7 +41,7 @@ def __find_duplicated_namespaces(namespaces_list: list) -> list:
 def assert_namespaces_are_unique(namespaces_list: list) -> None:
     """Assert that namespaces are unique."""
     if not len(namespaces_list) == len(set(namespaces_list)):
-        duplicates = __find_duplicated_namespaces(namespaces_list)
+        duplicates = _find_duplicated_namespaces(namespaces_list)
         print(f"ERROR: namespaces are not unique, duplicates found: {duplicates}")
         sys.exit(1)
 
