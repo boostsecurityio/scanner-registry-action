@@ -143,8 +143,7 @@ def main(rules_db_path: str) -> None:
     """Validate the Rules DB file."""
     if rules_db_list := find_rules_db_yaml(rules_db_path):
         for rules_db_path in rules_db_list:
-            rules_db = load_yaml_file(rules_db_path)
-            if rules_db:
+            if rules_db := load_yaml_file(rules_db_path):
                 validate_rules(rules_db)
             else:
                 _log_error_and_exit("Rules DB is empty")
