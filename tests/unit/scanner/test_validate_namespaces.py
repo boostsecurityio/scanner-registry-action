@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pytest
 
-from action.scanner.validate_namespaces import (
+from boostsec.scanner.validate_namespaces import (
     assert_namespaces_are_unique,
     find_module_yaml,
     get_namespaces_from_module_yaml,

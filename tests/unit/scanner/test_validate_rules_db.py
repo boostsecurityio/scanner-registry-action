@@ -6,7 +6,7 @@ import pytest
 import yaml
 from requests_mock import Mocker
 
-from action.scanner.validate_rules_db import (
+from boostsec.scanner.validate_rules_db import (
     find_rules_db_yaml,
     load_yaml_file,
     main,
