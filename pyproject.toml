@@ -4,7 +4,7 @@ version = "1.0.0"
 description = "A GitHub Action to scan the Registry repository"
 authors = []
 packages = [{ include = "boostsec" }]
-include = ["boostsec/scanner/py.typed"]
+include = ["boostsec/registry_validator/py.typed"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
