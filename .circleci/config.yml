@@ -1,0 +1,41 @@
+version: 2.1
+
+executors:
+  default:
+    environment:
+      BUILDKIT_PROGRESS: plain
+
+    machine:
+      docker_layer_caching: true
+      image: ubuntu-2004:202111-02
+
+workflows:
+  version: 2
+  ci:
+    jobs:
+      - test:
+          context: aws-build-read
+
+jobs:
+  test:
+    executor: default
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - venv-0-{{ .Branch }}-{{ checksum "poetry.lock" }}
+            - venv-0-{{ .Branch }}-
+            - venv-0-main-
+      - run:
+          name: install poetry
+          command: pip3 install --pre "poetry==1.2.0b1"
+      - run:
+          command: make install
+      - run:
+          command: make lint
+      - run:
+          command: make test
+      - save_cache:
+          key: venv-0-{{ .Branch }}-{{ checksum "poetry.lock" }}
+          paths:
+            - /home/circleci/.cache/pypoetry/virtualenvs
