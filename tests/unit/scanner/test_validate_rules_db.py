@@ -1,9 +1,12 @@
+"""Test."""
 from pathlib import PosixPath
 from uuid import uuid4
 
 import pytest
 import yaml
-from boostsec.scanner.validate_rules_db import (
+from requests_mock import Mocker
+
+from action.scanner.validate_rules_db import (
     find_rules_db_yaml,
     load_yaml_file,
     main,
@@ -14,8 +17,6 @@ from boostsec.scanner.validate_rules_db import (
     validate_rules,
     validate_rules_db,
 )
-from pytest import CaptureFixture
-from requests_mock import Mocker
 
 _INVALID_YAML_FILE = """
 invalid yaml:a{] : -
@@ -180,7 +181,7 @@ def test_load_empty_yaml_file(tmp_path: PosixPath) -> None:
 
 
 def test_load_yaml_file_with_invalid_yaml(
-    tmp_path: PosixPath, capfd: CaptureFixture[str]
+    tmp_path: PosixPath, capfd: pytest.CaptureFixture[str]
 ) -> None:
     """Test load_yaml_file with invalid yaml."""
     test_yaml = tmp_path / "test.yaml"
@@ -191,15 +192,15 @@ def test_load_yaml_file_with_invalid_yaml(
     assert out == "ERROR: Unable to parse Rules DB file\n"
 
 
-def test_load_yaml_without_file(capfd: CaptureFixture[str]) -> None:
+def test_load_yaml_without_file(capfd: pytest.CaptureFixture[str]) -> None:
     """Test load_yaml_file without file."""
     with pytest.raises(SystemExit):
-        load_yaml_file("/tmp/does_not_exist.yaml")
+        load_yaml_file("/temp/does_not_exist.yaml")
     out, _ = capfd.readouterr()
-    assert out == "ERROR: Rules DB not found: /tmp/does_not_exist.yaml\n"
+    assert out == "ERROR: Rules DB not found: /temp/does_not_exist.yaml\n"
 
 
-def test_validate_ref_url_with_invalid_url(capfd: CaptureFixture[str]) -> None:
+def test_validate_ref_url_with_invalid_url(capfd: pytest.CaptureFixture[str]) -> None:
     """Test validate_ref_url with invalid url."""
     with pytest.raises(SystemExit):
         validate_ref_url({"name": "test", "ref": "invalid_url"})
@@ -220,7 +221,7 @@ def test_validate_ref_url_with_valid_url_with_http(requests_mock: Mocker) -> Non
 
 
 def test_validate_ref_url_with_invalid_url_exception(
-    capfd: CaptureFixture[str],
+    capfd: pytest.CaptureFixture[str],
 ) -> None:
     """Test validate_ref_url with invalid url."""
     with pytest.raises(SystemExit):
@@ -230,7 +231,7 @@ def test_validate_ref_url_with_invalid_url_exception(
 
 
 def test_validate_ref_url_return_404(
-    requests_mock: Mocker, capfd: CaptureFixture[str]
+    requests_mock: Mocker, capfd: pytest.CaptureFixture[str]
 ) -> None:
     """Test validate_ref_url with invalid url."""
     requests_mock.get("https://example.com", status_code=404)
@@ -246,7 +247,7 @@ def test_validate_rules_db_with_valid_rules_db() -> None:
 
 
 @pytest.mark.parametrize(
-    "rule_str, expected",
+    ("rule_str", "expected"),
     [
         (
             _INVALID_RULES_DB_STRING_MISSING_CATEGORIES,
@@ -284,7 +285,7 @@ def test_validate_rules_db_with_valid_rules_db() -> None:
     ],
 )
 def test_validate_rules_db_with_invalid_rules_db(
-    rule_str: str, expected: str, capfd: CaptureFixture[str]
+    rule_str: str, expected: str, capfd: pytest.CaptureFixture[str]
 ) -> None:
     """Test validate_rules_db with invalid rules db."""
     with pytest.raises(SystemExit):
@@ -298,7 +299,9 @@ def test_validate_rule_name_with_valid_name() -> None:
     validate_rule_name("test", {"name": "test"})
 
 
-def test_validate_rule_name_with_invalid_name(capfd: CaptureFixture[str]) -> None:
+def test_validate_rule_name_with_invalid_name(
+    capfd: pytest.CaptureFixture[str],
+) -> None:
     """Test validate_rule_name with invalid name."""
     with pytest.raises(SystemExit):
         validate_rule_name("test", {"name": "invalid"})
@@ -312,7 +315,7 @@ def test_validate_all_in_category_with_valid_category() -> None:
 
 
 def test_validate_all_in_category_with_invalid_category(
-    capfd: CaptureFixture[str],
+    capfd: pytest.CaptureFixture[str],
 ) -> None:
     """Test validate_all_in_category with invalid category."""
     with pytest.raises(SystemExit):
@@ -327,7 +330,7 @@ def test_validate_description_length_with_valid_description() -> None:
 
 
 def test_validate_description_length_with_invalid_description(
-    capfd: CaptureFixture[str],
+    capfd: pytest.CaptureFixture[str],
 ) -> None:
     """Test validate_description_length with invalid description."""
     with pytest.raises(SystemExit):
@@ -339,7 +342,7 @@ def test_validate_description_length_with_invalid_description(
 
 
 def test_validate_rules_with_valid_rules(
-    capfd: CaptureFixture[str], requests_mock: Mocker
+    capfd: pytest.CaptureFixture[str], requests_mock: Mocker
 ) -> None:
     """Test validate_rules with valid rules."""
     requests_mock.get("http://my.link.com", status_code=200)
@@ -349,7 +352,7 @@ def test_validate_rules_with_valid_rules(
 
 
 def test_main_with_valid_rules(
-    capfd: CaptureFixture[str], requests_mock: Mocker, tmp_path: PosixPath
+    capfd: pytest.CaptureFixture[str], requests_mock: Mocker, tmp_path: PosixPath
 ) -> None:
     """Test main with valid rules."""
     requests_mock.get("http://my.link.com", status_code=200)
@@ -361,7 +364,7 @@ def test_main_with_valid_rules(
 
 
 def test_main_with_empty_rules_db(
-    capfd: CaptureFixture[str], tmp_path: PosixPath
+    capfd: pytest.CaptureFixture[str], tmp_path: PosixPath
 ) -> None:
     """Test main with empty rules db."""
     rules_db_path = tmp_path / "rules_db.yaml"
@@ -373,7 +376,7 @@ def test_main_with_empty_rules_db(
 
 
 def test_main_with_without_rules_db(
-    capfd: CaptureFixture[str], tmp_path: PosixPath
+    capfd: pytest.CaptureFixture[str], tmp_path: PosixPath
 ) -> None:
     """Test main with empty rules db."""
     main(str(tmp_path))

@@ -17,8 +17,7 @@ runs:
         python-version: 3.9
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install -r ${{ github.action_path }}/requirements.txt
+        poetry install --without dev
       shell: bash
     - name: Validate rules database
       run: |

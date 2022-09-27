@@ -1,3 +1,4 @@
+"""Validates that namespaces are unique."""
 import argparse
 import os
 import sys
@@ -5,7 +6,7 @@ import sys
 import yaml
 
 
-def find_module_yaml(modules_path: str) -> list:
+def find_module_yaml(modules_path: str) -> list[str]:
     """Find module.yaml files."""
     modules_list = []
     for root, _, files in os.walk(modules_path):
@@ -16,7 +17,7 @@ def find_module_yaml(modules_path: str) -> list:
     return modules_list
 
 
-def get_namespaces_from_module_yaml(modules_list: list) -> list:
+def get_namespaces_from_module_yaml(modules_list: list[str]) -> list[str]:
     """Get namespaces from module.yaml files."""
     namespaces_list = []
     for module in modules_list:
@@ -29,7 +30,7 @@ def get_namespaces_from_module_yaml(modules_list: list) -> list:
     return namespaces_list
 
 
-def _find_duplicated_namespaces(namespaces_list: list) -> list:
+def _find_duplicated_namespaces(namespaces_list: list[str]) -> list[str]:
     """Find duplicated namespaces."""
     duplicates = set()
     for namespace in namespaces_list:
@@ -38,7 +39,7 @@ def _find_duplicated_namespaces(namespaces_list: list) -> list:
     return list(duplicates)
 
 
-def assert_namespaces_are_unique(namespaces_list: list) -> None:
+def assert_namespaces_are_unique(namespaces_list: list[str]) -> None:
     """Assert that namespaces are unique."""
     if not len(namespaces_list) == len(set(namespaces_list)):
         duplicates = _find_duplicated_namespaces(namespaces_list)
@@ -47,7 +48,7 @@ def assert_namespaces_are_unique(namespaces_list: list) -> None:
 
 
 def main(modules_path: str) -> None:
-    """Main function."""
+    """Validate that namespaces are unique."""
     print("Validating namespaces...")
     modules_list = find_module_yaml(modules_path)
     namespaces_list = get_namespaces_from_module_yaml(modules_list)

@@ -1,3 +1,4 @@
+"""Validates the Rules DB file."""
 import argparse
 import os
 import sys
@@ -45,7 +46,7 @@ properties:
 """
 
 
-def find_rules_db_yaml(rules_db_path: str) -> list:
+def find_rules_db_yaml(rules_db_path: str) -> list[str]:
     """Find module.yaml files."""
     rules_db_list = []
     for root, _, files in os.walk(rules_db_path):
@@ -67,7 +68,7 @@ def _log_info(message: str) -> None:
     print(message)
 
 
-def load_yaml_file(file_path: str) -> Dict[str, Any]:
+def load_yaml_file(file_path: str) -> Any:
     """Load a YAML file."""
     try:
         with open(file_path, "r") as file:
@@ -80,7 +81,7 @@ def load_yaml_file(file_path: str) -> Dict[str, Any]:
     return {}
 
 
-def validate_ref_url(rule) -> None:
+def validate_ref_url(rule: Any) -> None:
     """Validate ref url is valid."""
     if not rule["ref"].startswith("http") and not rule["ref"].startswith("https"):
         _log_error_and_exit(
@@ -106,7 +107,7 @@ def validate_rules_db(rules_db: Dict[str, Any]) -> None:
         _log_error_and_exit(f'Rules db is invalid: "{e.message}"')
 
 
-def validate_rule_name(name, rule: Dict[str, Any]) -> None:
+def validate_rule_name(name: str, rule: Dict[str, Any]) -> None:
     """Validate rule name is equal to rule id."""
     if name != rule["name"]:
         _log_error_and_exit(f"Rule name \"{name}\" does not match \"{rule['name']}\"")
@@ -139,7 +140,7 @@ def validate_rules(rules_db: Dict[str, Any]) -> None:
 
 
 def main(rules_db_path: str) -> None:
-    """Main function."""
+    """Validate the Rules DB file."""
     if rules_db_list := find_rules_db_yaml(rules_db_path):
         for rules_db_path in rules_db_list:
             rules_db = load_yaml_file(rules_db_path)
