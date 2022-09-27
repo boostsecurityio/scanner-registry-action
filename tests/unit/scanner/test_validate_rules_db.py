@@ -152,7 +152,7 @@ rules:
 """
 
 
-def __create_rules_db_yaml(tmp_path: PosixPath, rules_db_string: str) -> None:
+def _create_rules_db_yaml(tmp_path: PosixPath, rules_db_string: str) -> None:
     """Create a module.yaml file."""
     modules_path = tmp_path / uuid4().hex
     modules_path.mkdir()
@@ -162,7 +162,7 @@ def __create_rules_db_yaml(tmp_path: PosixPath, rules_db_string: str) -> None:
 
 def test_find_rules_db_yaml(tmp_path: PosixPath) -> None:
     """Test find_rules_db_yaml."""
-    __create_rules_db_yaml(tmp_path, _VALID_RULES_DB_STRING)
+    _create_rules_db_yaml(tmp_path, _VALID_RULES_DB_STRING)
     assert len(find_rules_db_yaml(str(tmp_path))) == 1
 
 
