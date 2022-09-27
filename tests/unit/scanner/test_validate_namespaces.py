@@ -12,7 +12,7 @@ from action.scanner.validate_namespaces import (
 )
 
 
-def __create_module_yaml(tmp_path: PosixPath, namespace: str = "") -> None:
+def _create_module_yaml(tmp_path: PosixPath, namespace: str = "") -> None:
     """Create a module.yaml file."""
     modules_path = tmp_path / uuid4().hex
     modules_path.mkdir()
@@ -28,18 +28,18 @@ def __create_module_yaml(tmp_path: PosixPath, namespace: str = "") -> None:
 @pytest.fixture()
 def create_unique_modules(tmp_path: PosixPath) -> PosixPath:
     """Create a module.yaml file."""
-    __create_module_yaml(tmp_path, "test1")
-    __create_module_yaml(tmp_path, "test2")
-    __create_module_yaml(tmp_path, "test3")
+    _create_module_yaml(tmp_path, "test1")
+    _create_module_yaml(tmp_path, "test2")
+    _create_module_yaml(tmp_path, "test3")
     return tmp_path
 
 
 @pytest.fixture()
 def create_repeated_modules(tmp_path: PosixPath) -> PosixPath:
     """Create a module.yaml file."""
-    __create_module_yaml(tmp_path, "test1")
-    __create_module_yaml(tmp_path, "test2")
-    __create_module_yaml(tmp_path, "test2")
+    _create_module_yaml(tmp_path, "test1")
+    _create_module_yaml(tmp_path, "test2")
+    _create_module_yaml(tmp_path, "test2")
     return tmp_path
 
 
@@ -60,7 +60,7 @@ def test_get_namespaces_from_module_yaml_without_namespace(
     tmp_path: PosixPath, capfd: pytest.CaptureFixture[str]
 ) -> None:
     """Test get_namespaces_from_module_yaml."""
-    __create_module_yaml(tmp_path)
+    _create_module_yaml(tmp_path)
     modules = find_module_yaml(str(tmp_path))
     with pytest.raises(SystemExit):
         get_namespaces_from_module_yaml(modules)
