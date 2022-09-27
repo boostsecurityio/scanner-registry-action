@@ -5,10 +5,9 @@ from uuid import uuid4
 import pytest
 
 from boostsec.registry_validator.validate_namespaces import (
-    assert_namespaces_are_unique,
     find_module_yaml,
-    get_namespaces_from_module_yaml,
     main,
+    validate_namespaces_from_module_yaml,
 )
 
 
@@ -49,31 +48,22 @@ def test_find_module_yaml(create_unique_modules: PosixPath) -> None:
     assert len(modules) == 3
 
 
-def test_get_namespaces_from_module_yaml(create_unique_modules: PosixPath) -> None:
-    """Test get_namespaces_from_module_yaml."""
+def test_validate_namespaces_from_module_yaml(create_unique_modules: PosixPath) -> None:
+    """Test validate_namespaces_from_module_yaml."""
     modules = find_module_yaml(str(create_unique_modules))
-    namespaces = get_namespaces_from_module_yaml(modules)
-    assert set(namespaces) == {"test1", "test2", "test3"}
+    validate_namespaces_from_module_yaml(modules)
 
 
-def test_get_namespaces_from_module_yaml_without_namespace(
+def test_validate_namespaces_from_module_yaml_without_namespace(
     tmp_path: PosixPath, capfd: pytest.CaptureFixture[str]
 ) -> None:
-    """Test get_namespaces_from_module_yaml."""
+    """Test validate_namespaces_from_module_yaml."""
     _create_module_yaml(tmp_path)
     modules = find_module_yaml(str(tmp_path))
     with pytest.raises(SystemExit):
-        get_namespaces_from_module_yaml(modules)
+        validate_namespaces_from_module_yaml(modules)
     out, _ = capfd.readouterr()
     assert "ERROR: namespace not found in" in out
-
-
-def test_assert_namespaces_are_unique(create_repeated_modules: PosixPath) -> None:
-    """Test assert_namespaces_are_unique."""
-    modules = find_module_yaml(str(create_repeated_modules))
-    namespaces = get_namespaces_from_module_yaml(modules)
-    with pytest.raises(SystemExit):
-        assert_namespaces_are_unique(namespaces)
 
 
 def test_main(
@@ -82,7 +72,13 @@ def test_main(
     """Test main."""
     main(str(create_unique_modules))
     out, _ = capfd.readouterr()
-    assert out == "Validating namespaces...\nNamespaces are unique.\n"
+    assert out == "\n".join(
+        [
+            "Validating namespaces...",
+            "Namespaces are unique.",
+            "",
+        ]
+    )
 
 
 def test_main_error(
@@ -92,7 +88,10 @@ def test_main_error(
     with pytest.raises(SystemExit):
         main(str(create_repeated_modules))
     out, _ = capfd.readouterr()
-    assert out == (
-        "Validating namespaces...\n"
-        "ERROR: namespaces are not unique, duplicates found: ['test2']\n"
+    assert out == "\n".join(
+        [
+            "Validating namespaces...",
+            "ERROR: namespaces are not unique, duplicate: test2",
+            "",
+        ]
     )
