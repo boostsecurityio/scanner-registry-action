@@ -1,0 +1,41 @@
+#
+# Targets
+#
+install:  ## Install repository dependencies
+install: .phony
+	poetry install --sync --extras testing
+
+update:  ## Update the lock file and virtualenv
+update: poetry.lock install
+
+upgrade:  ## Update repository dependencies
+upgrade: cruft.update update
+
+format:  ## Run code formatters
+format: .phony
+	poetry run isort .
+	poetry run black .
+
+lint:  ## Run linters
+lint: .phony
+	poetry run mypy .
+	poetry run flake8 .
+
+test: ## Run pytest
+test: .phony
+	# https://pytest-cov.readthedocs.io/en/latest/plugins.html
+	COV_CORE_SOURCE=action.scanner \
+	COV_CORE_CONFIG=.coveragerc \
+	COV_CORE_DATAFILE=.coverage.eager \
+	poetry run pytest \
+		--cov --cov-append --cov-report term-missing --cov-fail-under=100 \
+		--verbosity=1
+
+#
+# Private targets
+#
+poetry.lock: .phony
+	poetry update --lock
+
+cruft.update: .phony
+	cruft update
