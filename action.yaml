@@ -15,17 +15,21 @@ runs:
     - uses: actions/setup-python@v2
       with:
         python-version: 3.9
+    - name: Install poetry
+      run: pip3 install --pre "poetry==1.2.0b1"
+      shell: bash
     - name: Install dependencies
       run: |
-        poetry install --without dev
+        cp ${{ github.action_path }}/pyproject.toml ${{ github.action_path }}/poetry.lock . && \
+          poetry install --no-root --without dev
       shell: bash
     - name: Validate rules database
       run: |
-        python ${{ github.action_path }}/boostsec/scanner/validate_rules_db.py \
+        poetry run python ${{ github.action_path }}/boostsec/registry_validator/validate_rules_db.py \
           --rules-db-path ${{ inputs.rules_db_path }}
       shell: bash
     - name: Validate namespaces
       run: |
-        python ${{ github.action_path }}/boostsec/scanner/validate_namespaces.py \
+        poetry run python ${{ github.action_path }}/boostsec/registry_validator/validate_namespaces.py \
           --modules-path ${{ inputs.modules_path }}
       shell: bash
