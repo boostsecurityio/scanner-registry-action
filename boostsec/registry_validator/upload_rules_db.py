@@ -102,7 +102,7 @@ def main(modules_path: str, api_endpoint: str, api_token: str) -> None:
     """Validate the Rules DB file."""
     modules = _find_modules(modules_path)
     if len(modules) == 0:
-        log_error_and_exit("No modules.yaml found.")
+        log_error_and_exit("No module.yaml found.")
     else:
         for module in modules:
             if not has_rules_yaml(module):

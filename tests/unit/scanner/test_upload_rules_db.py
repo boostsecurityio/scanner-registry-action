@@ -183,4 +183,4 @@ def test_main_error(
 
     assert mock_requests.post.call_count == 0
     out, _ = capfd.readouterr()
-    assert out == "ERROR: No modules found.\n"
+    assert out == "ERROR: No module.yaml found.\n"
