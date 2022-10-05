@@ -12,12 +12,10 @@ on:
   push:
     branches:
       - main
-      - master
 
   pull_request:
     branches:
       - main
-      - master
     types:
       - opened
       - synchronize
@@ -32,6 +30,8 @@ jobs:
         uses: actions/checkout@v2
       - name: Scan Registry
         uses: boostsecurityio/scanner-registry-action@v1
+        with:
+          api_token: ${{ secrets.BOOST_API_TOKEN }}
 ```
 
 ## Configuration
