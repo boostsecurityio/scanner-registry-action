@@ -39,8 +39,8 @@ runs:
     - name: Upload rules database
       if: ${{ github.event_name == 'push' }}
       run: |
-        git fetch --unshallow --quiet
-        git --no-pager diff --name-status HEAD~1 | awk '{print $2}' | python main.py | \
+        git fetch --deepen=1 --quiet
+        git --no-pager diff --name-status HEAD~1 | awk '{print $2}' \
           poetry run python ${{ github.action_path }}/boostsec/registry_validator/upload_rules_db.py \
           --api-endpoint ${{ inputs.api_endpoint }} --api-token ${{ inputs.api_token }}
       shell: bash
