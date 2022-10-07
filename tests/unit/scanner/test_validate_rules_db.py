@@ -22,14 +22,13 @@ _INVALID_YAML_FILE = """
 invalid yaml:a{] : -
 """
 
-_VALID_RULES_DB_STRING = """
+VALID_RULES_DB_STRING = """
 rules:
   my-rule-1:
     categories:
       - ALL
       - category-1
     description: Lorem Ipsum
-    driver: Test
     group: Test group 1
     name: my-rule-1
     pretty_name: My rule 1
@@ -39,7 +38,6 @@ rules:
       - ALL
       - category-2
     description: Lorem Ipsum
-    driver: Test
     group: Test group 2
     name: my-rule-2
     pretty_name: My rule 2
@@ -50,7 +48,6 @@ _INVALID_RULES_DB_STRING_MISSING_CATEGORIES = """
 rules:
   my-rule-1:
     description: Lorem Ipsum
-    driver: Test
     group: Test group 1
     name: my-rule-1
     pretty_name: My rule 1
@@ -63,7 +60,6 @@ rules:
     categories:
       - ALL
       - category-1
-    driver: Test
     group: Test group 1
     name: my-rule-1
     pretty_name: My rule 1
@@ -90,7 +86,6 @@ rules:
       - ALL
       - category-1
     description: Lorem Ipsum
-    driver: Test
     name: my-rule-1
     pretty_name: My rule 1
     ref: "http://my.link.com"
@@ -103,7 +98,6 @@ rules:
       - ALL
       - category-1
     description: Lorem Ipsum
-    driver: Test
     group: Test group 1
     pretty_name: My rule 1
     ref: "http://my.link.com"
@@ -116,7 +110,6 @@ rules:
       - ALL
       - category-1
     description: Lorem Ipsum
-    driver: Test
     group: Test group 1
     name: my-rule-1
     ref: "http://my.link.com"
@@ -129,7 +122,6 @@ rules:
       - ALL
       - category-1
     description: Lorem Ipsum
-    driver: Test
     group: Test group 1
     name: my-rule-1
     pretty_name: My rule 1
@@ -142,7 +134,6 @@ rules:
       - ALL
       - category-1
     description: Lorem Ipsum
-    driver: Test
     group: Test group 1
     name: my-rule-1
     pretty_name: My rule 1
@@ -156,21 +147,21 @@ def _create_rules_db_yaml(tmp_path: PosixPath, rules_db_string: str) -> None:
     """Create a module.yaml file."""
     modules_path = tmp_path / uuid4().hex
     modules_path.mkdir()
-    module_yaml = modules_path / "rules_db.yaml"
+    module_yaml = modules_path / "rules.yaml"
     module_yaml.write_text(rules_db_string)
 
 
 def test_find_rules_db_yaml(tmp_path: PosixPath) -> None:
     """Test find_rules_db_yaml."""
-    _create_rules_db_yaml(tmp_path, _VALID_RULES_DB_STRING)
+    _create_rules_db_yaml(tmp_path, VALID_RULES_DB_STRING)
     assert len(find_rules_db_yaml(str(tmp_path))) == 1
 
 
 def test_load_yaml_file(tmp_path: PosixPath) -> None:
     """Test load_yaml_file."""
     test_yaml = tmp_path / "test.yaml"
-    test_yaml.write_text(_VALID_RULES_DB_STRING)
-    assert load_yaml_file(str(test_yaml)) == yaml.safe_load(_VALID_RULES_DB_STRING)
+    test_yaml.write_text(VALID_RULES_DB_STRING)
+    assert load_yaml_file(str(test_yaml)) == yaml.safe_load(VALID_RULES_DB_STRING)
 
 
 def test_load_empty_yaml_file(tmp_path: PosixPath) -> None:
@@ -243,7 +234,7 @@ def test_validate_ref_url_return_404(
 
 def test_validate_rules_db_with_valid_rules_db() -> None:
     """Test validate_rules_db with valid rules db."""
-    validate_rules_db(yaml.safe_load(_VALID_RULES_DB_STRING))
+    validate_rules_db(yaml.safe_load(VALID_RULES_DB_STRING))
 
 
 @pytest.mark.parametrize(
@@ -256,10 +247,6 @@ def test_validate_rules_db_with_valid_rules_db() -> None:
         (
             _INVALID_RULES_DB_STRING_MISSING_DESCRIPTION,
             "ERROR: Rules db is invalid: \"'description' is a required property\"\n",
-        ),
-        (
-            _INVALID_RULES_DB_STRING_MISSING_DRIVER,
-            "ERROR: Rules db is invalid: \"'driver' is a required property\"\n",
         ),
         (
             _INVALID_RULES_DB_STRING_MISSING_GROUP,
@@ -326,7 +313,7 @@ def test_validate_all_in_category_with_invalid_category(
 
 def test_validate_description_length_with_valid_description() -> None:
     """Test validate_description_length with valid description."""
-    validate_description_length({"name": "test", "description": "Lorem Ipsum " * 21})
+    validate_description_length({"name": "test", "description": "Lorem Ipsum " * 42})
 
 
 def test_validate_description_length_with_invalid_description(
@@ -335,10 +322,10 @@ def test_validate_description_length_with_invalid_description(
     """Test validate_description_length with invalid description."""
     with pytest.raises(SystemExit):
         validate_description_length(
-            {"name": "test", "description": "Lorem Ipsum " * 22}
+            {"name": "test", "description": "Lorem Ipsum " * 43}
         )
     out, _ = capfd.readouterr()
-    assert out == 'ERROR: Rule "test" has a description longer than 255 characters\n'
+    assert out == 'ERROR: Rule "test" has a description longer than 512 characters\n'
 
 
 def test_validate_rules_with_valid_rules(
@@ -346,7 +333,7 @@ def test_validate_rules_with_valid_rules(
 ) -> None:
     """Test validate_rules with valid rules."""
     requests_mock.get("http://my.link.com", status_code=200)
-    validate_rules(yaml.safe_load(_VALID_RULES_DB_STRING))
+    validate_rules(yaml.safe_load(VALID_RULES_DB_STRING))
     out, _ = capfd.readouterr()
     assert out == "Validating rules...\nRules are valid!\n"
 
@@ -356,8 +343,8 @@ def test_main_with_valid_rules(
 ) -> None:
     """Test main with valid rules."""
     requests_mock.get("http://my.link.com", status_code=200)
-    rules_db_path = tmp_path / "rules_db.yaml"
-    rules_db_path.write_text(_VALID_RULES_DB_STRING)
+    rules_db_path = tmp_path / "rules.yaml"
+    rules_db_path.write_text(VALID_RULES_DB_STRING)
     main(str(tmp_path))
     out, _ = capfd.readouterr()
     assert out == "Validating rules...\nRules are valid!\n"
@@ -367,7 +354,7 @@ def test_main_with_empty_rules_db(
     capfd: pytest.CaptureFixture[str], tmp_path: PosixPath
 ) -> None:
     """Test main with empty rules db."""
-    rules_db_path = tmp_path / "rules_db.yaml"
+    rules_db_path = tmp_path / "rules.yaml"
     rules_db_path.write_text("")
     with pytest.raises(SystemExit):
         main(str(tmp_path))
