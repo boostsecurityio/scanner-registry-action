@@ -29,10 +29,10 @@ def _log_error_and_exit(message: str) -> None:
     sys.exit(1)
 
 
-def find_modules(modules_path: str) -> list[Path]:
+def find_modules(files_stdin: str) -> list[Path]:
     """Find module.yaml files."""
     modules_dic = {}
-    for path in [i for i in modules_path.splitlines() if i.endswith("yaml")]:
+    for path in [i for i in files_stdin.splitlines() if i.endswith("yaml")]:
         module_path = Path(path).parent
         modules_dic[str(module_path)] = module_path
     return [i for i in modules_dic.values() if has_rules_yaml(i)]
@@ -106,9 +106,9 @@ def upload_rules_db(module: Path, api_endpoint: str, api_token: str) -> None:
         _log_error_and_exit(f"Unable to upload rules-db: {response.text}")
 
 
-def main(changed_files_str: str, api_endpoint: str, api_token: str) -> None:
+def main(files_stdin: str, api_endpoint: str, api_token: str) -> None:
     """Validate the Rules DB file."""
-    modules = find_modules(changed_files_str)
+    modules = find_modules(files_stdin)
     if len(modules) == 0:
         print("No module rules to update.")
     else:
