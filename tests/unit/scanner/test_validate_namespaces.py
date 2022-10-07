@@ -6,8 +6,8 @@ from uuid import uuid4
 import pytest
 import yaml
 
-from boostsec.registry_validator.common import find_module_yaml
 from boostsec.registry_validator.validate_namespaces import (
+    find_module_yaml,
     main,
     validate_namespaces_from_modules_yaml,
 )

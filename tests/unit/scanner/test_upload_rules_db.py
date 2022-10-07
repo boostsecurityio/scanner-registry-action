@@ -8,14 +8,13 @@ from uuid import uuid4
 import pytest
 import yaml
 
-from boostsec.registry_validator.common import find_module_yaml
 from boostsec.registry_validator.upload_rules_db import main, upload_rules_db
 from tests.unit.scanner.test_validate_rules_db import VALID_RULES_DB_STRING
 
 
 def _create_module_and_rules(
     tmp_path: Path, rules_db_string: str, namespace: str = "", create_rules: bool = True
-) -> None:
+) -> Path:
     """Create a module.yaml file."""
     modules_path = tmp_path / uuid4().hex
     modules_path.mkdir()
@@ -35,6 +34,7 @@ def _create_module_and_rules(
     if create_rules:
         rules_yaml = modules_path / "rules.yaml"
         rules_yaml.write_text(rules_db_string)
+    return module_yaml
 
 
 @patch("boostsec.registry_validator.upload_rules_db.requests")
@@ -43,10 +43,9 @@ def test_upload_rules_db(mock_requests: Any, tmp_path: Path) -> None:
     mock_requests.post.return_value.status_code = 200
     mock_requests.post.return_value.text = "RuleSuccessSchema"
     namespace = "namespace-example"
-    _create_module_and_rules(tmp_path, VALID_RULES_DB_STRING, namespace)
+    module_path = _create_module_and_rules(tmp_path, VALID_RULES_DB_STRING, namespace)
 
-    module_path = find_module_yaml(str(tmp_path))[0].parent
-    upload_rules_db(module_path, "https://my_endpoint/", "my-token")
+    upload_rules_db(module_path.parent, "https://my_endpoint/", "my-token")
 
     assert mock_requests.post.call_count == 1
     assert (
@@ -95,11 +94,10 @@ def test_upload_rules_db_error_400(
     mock_requests.post.return_value.status_code = 400
     mock_requests.post.return_value.text = "RuleSuccessSchema"
     namespace = "namespace-example"
-    _create_module_and_rules(tmp_path, VALID_RULES_DB_STRING, namespace)
+    module_path = _create_module_and_rules(tmp_path, VALID_RULES_DB_STRING, namespace)
 
-    module_path = find_module_yaml(str(tmp_path))[0].parent
     with pytest.raises(SystemExit):
-        upload_rules_db(module_path, "https://my_endpoint/", "my-token")
+        upload_rules_db(module_path.parent, "https://my_endpoint/", "my-token")
     out, _ = capfd.readouterr()
     assert out == "\n".join(
         [
@@ -120,11 +118,10 @@ def test_upload_rules_db_error_response(
     mock_requests.post.return_value.status_code = 200
     mock_requests.post.return_value.text = "RuleErrorSchema"
     namespace = "namespace-example"
-    _create_module_and_rules(tmp_path, VALID_RULES_DB_STRING, namespace)
+    module_path = _create_module_and_rules(tmp_path, VALID_RULES_DB_STRING, namespace)
 
-    module_path = find_module_yaml(str(tmp_path))[0].parent
     with pytest.raises(SystemExit):
-        upload_rules_db(module_path, "https://my_endpoint/", "my-token")
+        upload_rules_db(module_path.parent, "https://my_endpoint/", "my-token")
     out, _ = capfd.readouterr()
     assert out == "\n".join(
         [
@@ -145,9 +142,10 @@ def test_main_success(
     mock_requests.post.return_value.status_code = 200
     mock_requests.post.return_value.text = "RuleSuccessSchema"
     namespace = "namespace-example-main"
-    _create_module_and_rules(tmp_path, VALID_RULES_DB_STRING, namespace)
+    module_path = _create_module_and_rules(tmp_path, VALID_RULES_DB_STRING, namespace)
+    modules_yaml = module_path.parent / "modules.yaml"
 
-    main(str(tmp_path), "https://my_endpoint/", "my-token")
+    main(str(modules_yaml), "https://my_endpoint/", "my-token")
 
     assert mock_requests.post.call_count == 1
     out, _ = capfd.readouterr()
@@ -161,12 +159,17 @@ def test_main_success_warning(
     """Test upload_rules_db."""
     mock_requests.post.return_value.status_code = 200
     mock_requests.post.return_value.text = "RuleSuccessSchema"
-    _create_module_and_rules(tmp_path, VALID_RULES_DB_STRING, "namespace-example-main")
-    _create_module_and_rules(
+    module1 = _create_module_and_rules(
+        tmp_path, VALID_RULES_DB_STRING, "namespace-example-main"
+    )
+    module2 = _create_module_and_rules(
         tmp_path, VALID_RULES_DB_STRING, "namespace-example-main2", create_rules=False
     )
+    modules_yaml1 = module1.parent / "module.yaml"
+    modules_yaml2 = module2.parent / "module.yaml"
+    main_input = "\n".join([str(modules_yaml1), str(modules_yaml2)])
 
-    main(str(tmp_path), "https://my_endpoint/", "my-token")
+    main(main_input, "https://my_endpoint/", "my-token")
 
     assert mock_requests.post.call_count == 1
     out, _ = capfd.readouterr()
@@ -178,9 +181,8 @@ def test_main_error(
     mock_requests: Any, capfd: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
     """Test upload_rules_db."""
-    with pytest.raises(SystemExit):
-        main(str(tmp_path), "https://my_endpoint/", "my-token")
+    main(str(tmp_path), "https://my_endpoint/", "my-token")
 
     assert mock_requests.post.call_count == 0
     out, _ = capfd.readouterr()
-    assert out == "ERROR: No module.yaml found.\n"
+    assert out == "No module rules to update.\n"

@@ -1,14 +1,13 @@
 """Uploads the Rules DB file."""
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
 
 import requests
 import yaml
-
-from boostsec.registry_validator.common import find_module_yaml, log_error_and_exit
 
 MUTATION = """
 mutation setRules($rules: RuleInputSchemas!) {
@@ -24,10 +23,19 @@ mutation setRules($rules: RuleInputSchemas!) {
 }"""
 
 
-def _find_modules(modules_path: str) -> list[Path]:
+def _log_error_and_exit(message: str) -> None:
+    """Log an error message and exit."""
+    print("ERROR: " + message)
+    sys.exit(1)
+
+
+def find_modules(modules_path: str) -> list[Path]:
     """Find module.yaml files."""
-    modules_yaml = find_module_yaml(modules_path)
-    return [i.parent for i in modules_yaml]
+    modules_dic = {}
+    for path in [i for i in modules_path.splitlines() if i.endswith("yaml")]:
+        module_path = Path(path).parent
+        modules_dic[str(module_path)] = module_path
+    return [i for i in modules_dic.values() if has_rules_yaml(i)]
 
 
 def _get_header(api_token: str) -> dict[str, Any]:
@@ -76,7 +84,7 @@ def _get_namespace_and_driver(module: Path) -> tuple[str, str]:
 
 def has_rules_yaml(module: Path) -> bool:
     """Validate a module."""
-    module_items = list(map(str, module.iterdir()))
+    module_items = list(map(str, module.rglob("*.yaml")))
     if not any(i.endswith("rules.yaml") for i in module_items):
         print(f'WARNING: rules.yaml not found in "{module}". Skipping...')
         return False
@@ -95,29 +103,21 @@ def upload_rules_db(module: Path, api_endpoint: str, api_token: str) -> None:
         data=json.dumps(payload),
     )
     if response.status_code != 200 or "RuleErrorSchema" == response.text:
-        log_error_and_exit(f"Unable to upload rules-db: {response.text}")
+        _log_error_and_exit(f"Unable to upload rules-db: {response.text}")
 
 
-def main(modules_path: str, api_endpoint: str, api_token: str) -> None:
+def main(changed_files_str: str, api_endpoint: str, api_token: str) -> None:
     """Validate the Rules DB file."""
-    modules = _find_modules(modules_path)
+    modules = find_modules(changed_files_str)
     if len(modules) == 0:
-        log_error_and_exit("No module.yaml found.")
+        print("No module rules to update.")
     else:
         for module in modules:
-            if not has_rules_yaml(module):
-                continue
             upload_rules_db(module, api_endpoint, api_token)
 
 
 if __name__ == "__main__":  # pragma: no cover
     parser = argparse.ArgumentParser(description="Process a rule database.")
-    parser.add_argument(
-        "-m",
-        "--modules-path",
-        help="The location of the rule database.",
-        default="/Users/victorbarroncas/code/test2/scanners",
-    )
     parser.add_argument(
         "-e",
         "--api-endpoint",
@@ -131,4 +131,4 @@ if __name__ == "__main__":  # pragma: no cover
         required=True,
     )
     args = parser.parse_args()
-    main(**vars(args))
+    main(sys.stdin.read(), **vars(args))

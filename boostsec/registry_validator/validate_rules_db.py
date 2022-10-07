@@ -1,14 +1,13 @@
 """Validates the Rules DB file."""
 import argparse
 import os
+import sys
 from typing import Any, Dict
 
 import requests
 import yaml
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
-
-from boostsec.registry_validator.common import log_error_and_exit
 
 RULES_SCHEMA = """
 type: object
@@ -26,8 +25,6 @@ properties:
           - type: string
         description:
           type: string
-        driver:
-          type: string
         group:
           type: string
         name:
@@ -39,12 +36,17 @@ properties:
       required:
       - categories
       - description
-      - driver
       - group
       - name
       - pretty_name
       - ref
 """
+
+
+def _log_error_and_exit(message: str) -> None:
+    """Log an error message and exit."""
+    print("ERROR: " + message)
+    sys.exit(1)
 
 
 def find_rules_db_yaml(rules_db_path: str) -> list[str]:
@@ -70,26 +72,26 @@ def load_yaml_file(file_path: str) -> Any:
             if rules_db := yaml.safe_load(file):
                 return rules_db
     except FileNotFoundError:
-        log_error_and_exit(f"Rules DB not found: {file_path}")
+        _log_error_and_exit(f"Rules DB not found: {file_path}")
     except yaml.YAMLError:
-        log_error_and_exit("Unable to parse Rules DB file")
+        _log_error_and_exit("Unable to parse Rules DB file")
     return {}
 
 
 def validate_ref_url(rule: Any) -> None:
     """Validate ref url is valid."""
     if not rule["ref"].startswith("http") and not rule["ref"].startswith("https"):
-        log_error_and_exit(
+        _log_error_and_exit(
             f"Url missing protocol: \"{rule['ref']}\" from rule \"{rule['name']}\""
         )
     try:
         response = requests.get(rule["ref"])
         if not response.status_code == 200:
-            log_error_and_exit(
+            _log_error_and_exit(
                 f"Invalid url: \"{rule['ref']}\" from rule \"{rule['name']}\""
             )
     except requests.exceptions.ConnectionError:
-        log_error_and_exit(
+        _log_error_and_exit(
             f"Invalid url: \"{rule['ref']}\" from rule \"{rule['name']}\""
         )
 
@@ -99,26 +101,26 @@ def validate_rules_db(rules_db: Dict[str, Any]) -> None:
     try:
         validate(rules_db, yaml.safe_load(RULES_SCHEMA))
     except ValidationError as e:
-        log_error_and_exit(f'Rules db is invalid: "{e.message}"')
+        _log_error_and_exit(f'Rules db is invalid: "{e.message}"')
 
 
 def validate_rule_name(name: str, rule: Dict[str, Any]) -> None:
     """Validate rule name is equal to rule id."""
     if name != rule["name"]:
-        log_error_and_exit(f"Rule name \"{name}\" does not match \"{rule['name']}\"")
+        _log_error_and_exit(f"Rule name \"{name}\" does not match \"{rule['name']}\"")
 
 
 def validate_all_in_category(rule: Dict[str, Any]) -> None:
     """Validate category ALL is included in the categories."""
     if "ALL" not in rule["categories"]:
-        log_error_and_exit(f"Rule \"{rule['name']}\" is missing category \"ALL\"")
+        _log_error_and_exit(f"Rule \"{rule['name']}\" is missing category \"ALL\"")
 
 
 def validate_description_length(rule: Dict[str, Any]) -> None:
-    """Validate rule description length is less than 255 characters."""
-    if len(rule["description"]) > 255:
-        log_error_and_exit(
-            f"Rule \"{rule['name']}\" has a description longer than 255 characters"
+    """Validate rule description length is less than 512 characters."""
+    if len(rule["description"]) > 512:
+        _log_error_and_exit(
+            f"Rule \"{rule['name']}\" has a description longer than 512 characters"
         )
 
 
@@ -141,7 +143,7 @@ def main(rules_db_path: str) -> None:
             if rules_db := load_yaml_file(rules_db_path):
                 validate_rules(rules_db)
             else:
-                log_error_and_exit("Rules DB is empty")
+                _log_error_and_exit("Rules DB is empty")
     else:
         _log_info("No Rules DB found")
 

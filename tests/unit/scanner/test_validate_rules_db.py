@@ -29,7 +29,6 @@ rules:
       - ALL
       - category-1
     description: Lorem Ipsum
-    driver: Test
     group: Test group 1
     name: my-rule-1
     pretty_name: My rule 1
@@ -39,7 +38,6 @@ rules:
       - ALL
       - category-2
     description: Lorem Ipsum
-    driver: Test
     group: Test group 2
     name: my-rule-2
     pretty_name: My rule 2
@@ -50,7 +48,6 @@ _INVALID_RULES_DB_STRING_MISSING_CATEGORIES = """
 rules:
   my-rule-1:
     description: Lorem Ipsum
-    driver: Test
     group: Test group 1
     name: my-rule-1
     pretty_name: My rule 1
@@ -63,7 +60,6 @@ rules:
     categories:
       - ALL
       - category-1
-    driver: Test
     group: Test group 1
     name: my-rule-1
     pretty_name: My rule 1
@@ -90,7 +86,6 @@ rules:
       - ALL
       - category-1
     description: Lorem Ipsum
-    driver: Test
     name: my-rule-1
     pretty_name: My rule 1
     ref: "http://my.link.com"
@@ -103,7 +98,6 @@ rules:
       - ALL
       - category-1
     description: Lorem Ipsum
-    driver: Test
     group: Test group 1
     pretty_name: My rule 1
     ref: "http://my.link.com"
@@ -116,7 +110,6 @@ rules:
       - ALL
       - category-1
     description: Lorem Ipsum
-    driver: Test
     group: Test group 1
     name: my-rule-1
     ref: "http://my.link.com"
@@ -129,7 +122,6 @@ rules:
       - ALL
       - category-1
     description: Lorem Ipsum
-    driver: Test
     group: Test group 1
     name: my-rule-1
     pretty_name: My rule 1
@@ -142,7 +134,6 @@ rules:
       - ALL
       - category-1
     description: Lorem Ipsum
-    driver: Test
     group: Test group 1
     name: my-rule-1
     pretty_name: My rule 1
@@ -258,10 +249,6 @@ def test_validate_rules_db_with_valid_rules_db() -> None:
             "ERROR: Rules db is invalid: \"'description' is a required property\"\n",
         ),
         (
-            _INVALID_RULES_DB_STRING_MISSING_DRIVER,
-            "ERROR: Rules db is invalid: \"'driver' is a required property\"\n",
-        ),
-        (
             _INVALID_RULES_DB_STRING_MISSING_GROUP,
             "ERROR: Rules db is invalid: \"'group' is a required property\"\n",
         ),
@@ -326,7 +313,7 @@ def test_validate_all_in_category_with_invalid_category(
 
 def test_validate_description_length_with_valid_description() -> None:
     """Test validate_description_length with valid description."""
-    validate_description_length({"name": "test", "description": "Lorem Ipsum " * 21})
+    validate_description_length({"name": "test", "description": "Lorem Ipsum " * 42})
 
 
 def test_validate_description_length_with_invalid_description(
@@ -335,10 +322,10 @@ def test_validate_description_length_with_invalid_description(
     """Test validate_description_length with invalid description."""
     with pytest.raises(SystemExit):
         validate_description_length(
-            {"name": "test", "description": "Lorem Ipsum " * 22}
+            {"name": "test", "description": "Lorem Ipsum " * 43}
         )
     out, _ = capfd.readouterr()
-    assert out == 'ERROR: Rule "test" has a description longer than 255 characters\n'
+    assert out == 'ERROR: Rule "test" has a description longer than 512 characters\n'
 
 
 def test_validate_rules_with_valid_rules(
