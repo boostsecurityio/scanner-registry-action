@@ -126,20 +126,20 @@ def validate_description_length(rule: Dict[str, Any]) -> None:
 
 def validate_rules(rules_db: Dict[str, Any]) -> None:
     """Validate rules from rules_db."""
-    _log_info("Validating rules...")
     validate_rules_db(rules_db)
     for rule_name, rule in rules_db["rules"].items():
         validate_rule_name(rule_name, rule)
         validate_ref_url(rule)
         validate_all_in_category(rule)
         validate_description_length(rule)
-    _log_info("Rules are valid!")
 
 
 def main(rules_db_path: str) -> None:
     """Validate the Rules DB file."""
     if rules_db_list := find_rules_db_yaml(rules_db_path):
         for rules_db_path in rules_db_list:
+            relarive_path = "/".join(rules_db_path.split("/")[-3:])
+            _log_info(f"Validating {relarive_path}")
             if rules_db := load_yaml_file(rules_db_path):
                 validate_rules(rules_db)
             else:
