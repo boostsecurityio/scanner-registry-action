@@ -132,7 +132,6 @@ def validate_rules(rules_db: Dict[str, Any]) -> None:
         validate_ref_url(rule)
         validate_all_in_category(rule)
         validate_description_length(rule)
-    _log_info("Rules are valid!")
 
 
 def main(rules_db_path: str) -> None:

@@ -336,7 +336,7 @@ def test_validate_rules_with_valid_rules(
     requests_mock.get("http://my.link.com", status_code=200)
     validate_rules(yaml.safe_load(VALID_RULES_DB_STRING))
     out, _ = capfd.readouterr()
-    assert out == "Rules are valid!\n"
+    assert out == ""
 
 
 def test_main_with_valid_rules(
@@ -352,7 +352,6 @@ def test_main_with_valid_rules(
         r"\n".join(
             [
                 "^Validating .*/test_main_with_valid_rules0/rules.yaml",
-                "Rules are valid!",
                 "$",
             ]
         ),
