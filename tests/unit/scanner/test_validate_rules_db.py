@@ -1,4 +1,5 @@
 """Test."""
+import re
 from pathlib import PosixPath
 from uuid import uuid4
 
@@ -335,7 +336,7 @@ def test_validate_rules_with_valid_rules(
     requests_mock.get("http://my.link.com", status_code=200)
     validate_rules(yaml.safe_load(VALID_RULES_DB_STRING))
     out, _ = capfd.readouterr()
-    assert out == "Validating rules...\nRules are valid!\n"
+    assert out == "Rules are valid!\n"
 
 
 def test_main_with_valid_rules(
@@ -347,7 +348,16 @@ def test_main_with_valid_rules(
     rules_db_path.write_text(VALID_RULES_DB_STRING)
     main(str(tmp_path))
     out, _ = capfd.readouterr()
-    assert out == "Validating rules...\nRules are valid!\n"
+    assert re.match(
+        r"\n".join(
+            [
+                "^Validating .*/test_main_with_valid_rules0/rules.yaml",
+                "Rules are valid!",
+                "$",
+            ]
+        ),
+        out,
+    )
 
 
 def test_main_with_empty_rules_db(
@@ -359,7 +369,16 @@ def test_main_with_empty_rules_db(
     with pytest.raises(SystemExit):
         main(str(tmp_path))
     out, _ = capfd.readouterr()
-    assert out == "ERROR: Rules DB is empty\n"
+    assert re.match(
+        r"\n".join(
+            [
+                "^Validating .*/test_main_with_empty_rules_db0/rules.yaml",
+                "ERROR: Rules DB is empty",
+                "$",
+            ]
+        ),
+        out,
+    )
 
 
 def test_main_with_without_rules_db(
