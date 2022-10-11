@@ -380,6 +380,27 @@ def test_main_with_empty_rules_db(
     )
 
 
+def test_main_with_error(
+    capfd: pytest.CaptureFixture[str], tmp_path: PosixPath
+) -> None:
+    """Test main with empty rules db."""
+    rules_db_path = tmp_path / "rules.yaml"
+    rules_db_path.write_text(_INVALID_RULES_DB_STRING_MISSING_CATEGORIES)
+    with pytest.raises(SystemExit):
+        main(str(tmp_path))
+    out, _ = capfd.readouterr()
+    assert re.match(
+        r"\n".join(
+            [
+                "^Validating .*/test_main_with_error0/rules.yaml",
+                "ERROR: Rules db is invalid: \"'categories' is a required property\"",
+                "$",
+            ]
+        ),
+        out,
+    )
+
+
 def test_main_with_without_rules_db(
     capfd: pytest.CaptureFixture[str], tmp_path: PosixPath
 ) -> None:
