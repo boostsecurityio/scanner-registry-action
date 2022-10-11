@@ -37,7 +37,7 @@ runs:
           --modules-path ${{ inputs.modules_path }}
       shell: bash
     - name: Upload rules database
-      if: ${{ github.event_name == 'push' }}
+      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
       run: |
         git fetch --deepen=1 --quiet
         git --no-pager diff --name-status HEAD~1 | awk '{print $2}' | \
