@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import pytest
 import yaml
+from _pytest.monkeypatch import MonkeyPatch
 from requests_mock import Mocker
 
 from boostsec.registry_validator.validate_rules_db import (
@@ -43,6 +44,28 @@ rules:
     name: my-rule-2
     pretty_name: My rule 2
     ref: "http://my.link.com"
+"""
+
+VALID_RULES_DB_STRING_WITH_PLACEHOLDER = """
+rules:
+  my-rule-1:
+    categories:
+      - ALL
+      - category-1
+    description: Lorem Ipsum
+    group: Test group 1
+    name: my-rule-1
+    pretty_name: My rule 1
+    ref: "{BOOSTSEC_DOC_BASE_URL}/a/b/c"
+  my-rule-2:
+    categories:
+      - ALL
+      - category-2
+    description: Lorem Ipsum
+    group: Test group 2
+    name: my-rule-2
+    pretty_name: My rule 2
+    ref: "{BOOSTSEC_DOC_BASE_URL}/d/e/f"
 """
 
 _INVALID_RULES_DB_STRING_MISSING_CATEGORIES = """
@@ -210,6 +233,17 @@ def test_validate_ref_url_with_valid_url_with_http(requests_mock: Mocker) -> Non
     """Test validate_ref_url with valid url."""
     requests_mock.get("http://example.com", status_code=200)
     validate_ref_url({"name": "test", "ref": "http://example.com"})
+
+
+def test_validate_ref_url_with_valid_url_with_placeholder(
+    requests_mock: Mocker, monkeypatch: MonkeyPatch
+) -> None:
+    """Test validate_ref_url with valid url."""
+    env_var_name = "BOOSTSEC_DOC_BASE_URL"
+    monkeypatch.setenv(env_var_name, "http://test.com")
+    requests_mock.get("http://test.com/a/b/c", status_code=200)
+    validate_ref_url({"name": "test", "ref": f"{{{env_var_name}}}/a/b/c"})
+    assert requests_mock.call_count == 1
 
 
 def test_validate_ref_url_with_invalid_url_exception(

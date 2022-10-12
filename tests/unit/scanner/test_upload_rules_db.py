@@ -14,7 +14,10 @@ from boostsec.registry_validator.upload_rules_db import (
     render_doc_url,
     upload_rules_db,
 )
-from tests.unit.scanner.test_validate_rules_db import VALID_RULES_DB_STRING
+from tests.unit.scanner.test_validate_rules_db import (
+    VALID_RULES_DB_STRING,
+    VALID_RULES_DB_STRING_WITH_PLACEHOLDER,
+)
 
 
 def _create_module_and_rules(
@@ -92,6 +95,61 @@ def test_upload_rules_db(mock_requests: Any, tmp_path: Path) -> None:
 
 
 @patch("boostsec.registry_validator.upload_rules_db.requests")
+def test_upload_rules_db_with_placeholder(
+    mock_requests: Any, tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
+    """Test upload_rules_db."""
+    env_var_name = "BOOSTSEC_DOC_BASE_URL"
+    monkeypatch.setenv(env_var_name, "http://test.com")
+    mock_requests.post.return_value.status_code = 200
+    mock_requests.post.return_value.text = "RuleSuccessSchema"
+    namespace = "namespace-example"
+    module_path = _create_module_and_rules(
+        tmp_path, VALID_RULES_DB_STRING_WITH_PLACEHOLDER, namespace
+    )
+
+    upload_rules_db(module_path.parent, "https://my_endpoint/", "my-token")
+
+    assert mock_requests.post.call_count == 1
+    assert (
+        mock_requests.post.call_args[0][0]
+        == "https://my_endpoint/rules-management/graphql"
+    )
+    assert mock_requests.post.call_args[1]["headers"] == {
+        "Authorization": "ApiKey my-token",
+        "Content-Type": "application/json",
+    }
+    assert json.loads(mock_requests.post.call_args[1]["data"]) == {
+        "query": "\nmutation setRules($rules: RuleInputSchemas!) {\n    setRules(namespacedRules: $rules){\n        __typename\n        ... on RuleSuccessSchema {\n            successMessage\n        }\n        ... on RuleErrorSchema {\n            errorMessage\n        }\n    }\n}",  # noqa: E501
+        "variables": {
+            "rules": {
+                "namespace": "namespace-example",
+                "ruleInputs": [
+                    {
+                        "categories": ["ALL", "category-1"],
+                        "description": "Lorem Ipsum",
+                        "driver": "Example Scanner",
+                        "group": "Test group 1",
+                        "name": "my-rule-1",
+                        "prettyName": "My rule 1",
+                        "ref": "http://test.com/a/b/c",
+                    },
+                    {
+                        "categories": ["ALL", "category-2"],
+                        "description": "Lorem Ipsum",
+                        "driver": "Example Scanner",
+                        "group": "Test group 2",
+                        "name": "my-rule-2",
+                        "prettyName": "My rule 2",
+                        "ref": "http://test.com/d/e/f",
+                    },
+                ],
+            }
+        },
+    }
+
+
+@patch("boostsec.registry_validator.upload_rules_db.requests")
 def test_upload_rules_db_error_400(
     mock_requests: Any, capfd: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
@@ -147,11 +205,11 @@ def test_render_doc_url(monkeypatch: MonkeyPatch) -> None:
     assert rendered_url == "http://test.com/a/path"
 
 
-def test_render_doc_url_empty_env_var() -> None:
+def test_render_doc_url_error_empty_env_var() -> None:
     """Test render_doc_url."""
     env_var_name = "BOOSTSEC_DOC_BASE_URL"
-    rendered_url = render_doc_url(f"{{{env_var_name}}}/a/path")
-    assert rendered_url == "https://docs.boostsecurity.net/a/path"
+    with pytest.raises(KeyError):
+        render_doc_url(f"{{{env_var_name}}}/a/path")
 
 
 def test_render_doc_url_no_placeholder() -> None:

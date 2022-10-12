@@ -35,7 +35,7 @@ def render_doc_url(unrendered_url: str) -> str:
     var_name = "BOOSTSEC_DOC_BASE_URL"
     placeholder = f"{{{var_name}}}"
     if placeholder in unrendered_url:
-        doc_base_url = os.getenv(var_name, "https://docs.boostsecurity.net")
+        doc_base_url = os.environ[var_name]
         return unrendered_url.replace(placeholder, doc_base_url)
     else:
         return unrendered_url
