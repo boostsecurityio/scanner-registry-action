@@ -9,6 +9,8 @@ import yaml
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 
+from boostsec.registry_validator.upload_rules_db import render_doc_url
+
 RULES_SCHEMA = """
 type: object
 additionalProperties: false
@@ -47,17 +49,6 @@ def _log_error_and_exit(message: str) -> None:
     """Log an error message and exit."""
     print("ERROR: " + message)
     sys.exit(1)
-
-
-def render_doc_url(unrendered_url: str) -> str:
-    """Render doc url."""
-    var_name = "BOOSTSEC_DOC_BASE_URL"
-    placeholder = f"{{{var_name}}}"
-    if placeholder in unrendered_url:
-        doc_base_url = os.getenv(var_name, "https://docs.boostsecurity.net")
-        return unrendered_url.replace(placeholder, doc_base_url)
-    else:
-        return unrendered_url
 
 
 def find_rules_db_yaml(rules_db_path: str) -> list[str]:

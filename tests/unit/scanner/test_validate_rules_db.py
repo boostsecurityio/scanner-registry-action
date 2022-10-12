@@ -5,14 +5,12 @@ from uuid import uuid4
 
 import pytest
 import yaml
-from _pytest.monkeypatch import MonkeyPatch
 from requests_mock import Mocker
 
 from boostsec.registry_validator.validate_rules_db import (
     find_rules_db_yaml,
     load_yaml_file,
     main,
-    render_doc_url,
     validate_all_in_category,
     validate_description_length,
     validate_ref_url,
@@ -339,27 +337,6 @@ def test_validate_rules_with_valid_rules(
     validate_rules(yaml.safe_load(VALID_RULES_DB_STRING))
     out, _ = capfd.readouterr()
     assert out == ""
-
-
-def test_render_doc_url(monkeypatch: MonkeyPatch) -> None:
-    """Test render_doc_url."""
-    env_var_name = "BOOSTSEC_DOC_BASE_URL"
-    monkeypatch.setenv(env_var_name, "http://test.com")
-    rendered_url = render_doc_url(f"{{{env_var_name}}}/a/path")
-    assert rendered_url == "http://test.com/a/path"
-
-
-def test_render_doc_url_empty_env_var() -> None:
-    """Test render_doc_url."""
-    env_var_name = "BOOSTSEC_DOC_BASE_URL"
-    rendered_url = render_doc_url(f"{{{env_var_name}}}/a/path")
-    assert rendered_url == "https://docs.boostsecurity.net/a/path"
-
-
-def test_render_doc_url_no_placeholder() -> None:
-    """Test render_doc_url."""
-    test_url = "http://test.com/a/path"
-    assert render_doc_url(test_url) == test_url
 
 
 def test_main_with_valid_rules(
