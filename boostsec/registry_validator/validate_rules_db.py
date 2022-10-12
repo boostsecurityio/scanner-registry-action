@@ -49,6 +49,17 @@ def _log_error_and_exit(message: str) -> None:
     sys.exit(1)
 
 
+def render_doc_url(unrendered_url: str) -> str:
+    """Render doc url."""
+    var_name = "BOOSTSEC_DOC_BASE_URL"
+    placeholder = f"{{{var_name}}}"
+    if placeholder in unrendered_url:
+        doc_base_url = os.getenv(var_name, "https://docs.boostsecurity.net")
+        return unrendered_url.replace(placeholder, doc_base_url)
+    else:
+        return unrendered_url
+
+
 def find_rules_db_yaml(rules_db_path: str) -> list[str]:
     """Find module.yaml files."""
     rules_db_list = []
@@ -80,20 +91,17 @@ def load_yaml_file(file_path: str) -> Any:
 
 def validate_ref_url(rule: Any) -> None:
     """Validate ref url is valid."""
-    if not rule["ref"].startswith("http") and not rule["ref"].startswith("https"):
+    url = render_doc_url(rule["ref"])
+    if not url.startswith("http") and not url.startswith("https"):
         _log_error_and_exit(
-            f"Url missing protocol: \"{rule['ref']}\" from rule \"{rule['name']}\""
+            f"Url missing protocol: \"{url}\" from rule \"{rule['name']}\""
         )
     try:
-        response = requests.get(rule["ref"])
+        response = requests.get(url)
         if not response.status_code == 200:
-            _log_error_and_exit(
-                f"Invalid url: \"{rule['ref']}\" from rule \"{rule['name']}\""
-            )
+            _log_error_and_exit(f"Invalid url: \"{url}\" from rule \"{rule['name']}\"")
     except requests.exceptions.ConnectionError:
-        _log_error_and_exit(
-            f"Invalid url: \"{rule['ref']}\" from rule \"{rule['name']}\""
-        )
+        _log_error_and_exit(f"Invalid url: \"{url}\" from rule \"{rule['name']}\"")
 
 
 def validate_rules_db(rules_db: Dict[str, Any]) -> None:
