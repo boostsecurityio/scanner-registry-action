@@ -18,9 +18,6 @@ inputs:
     default: "https://docs.boostsecurity.net"
 runs:
   using: "composite"
-  env:
-    PYTHONPATH: ${{ github.action_path }}
-    BOOSTSEC_DOC_BASE_URL: ${{ inputs.docs_url }}
   steps:
     - uses: actions/setup-python@v2
       with:
@@ -38,11 +35,16 @@ runs:
         poetry run python -m boostsec.registry_validator.validate_rules_db \
           --rules-db-path ${{ inputs.modules_path }}
       shell: bash
+      env:
+        PYTHONPATH: ${{ github.action_path }}
+        BOOSTSEC_DOC_BASE_URL: ${{ inputs.docs_url }}
     - name: Validate namespaces
       run: |
         poetry run python -m boostsec.registry_validator.validate_namespaces \
           --modules-path ${{ inputs.modules_path }}
       shell: bash
+      env:
+        PYTHONPATH: ${{ github.action_path }}
     - name: Upload rules database
       if: ${{ github.event_name == 'push' }}
       run: |
@@ -51,3 +53,6 @@ runs:
           poetry run python -m boostsec.registry_validator.upload_rules_db \
           --api-endpoint ${{ inputs.api_endpoint }} --api-token ${{ inputs.api_token }}
       shell: bash
+      env:
+        PYTHONPATH: ${{ github.action_path }}
+        BOOSTSEC_DOC_BASE_URL: ${{ inputs.docs_url }}
