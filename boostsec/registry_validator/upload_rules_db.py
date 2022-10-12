@@ -45,7 +45,7 @@ def render_doc_url(unrendered_url: str) -> str:
 def find_modules() -> list[Path]:
     """Find module.yaml files."""
     fetch_command = ["git", "fetch", "--deepen=1", "--quiet"]
-    check_call(fetch_command)  # noqa: S603
+    check_call(fetch_command)  # noqa: S603 noboost
     diff_command = [
         "git",
         "--no-pager",
@@ -56,7 +56,7 @@ def find_modules() -> list[Path]:
         "AM",
         "HEAD~1",
     ]
-    diff_output = check_output(diff_command)  # noqa: S603
+    diff_output = check_output(diff_command)  # noqa: S603 noboost
     diff_output_list = diff_output.decode("utf-8").splitlines()
 
     modules_dic = {}
