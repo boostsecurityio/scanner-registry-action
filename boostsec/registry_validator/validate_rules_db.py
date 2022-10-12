@@ -9,6 +9,8 @@ import yaml
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 
+from boostsec.registry_validator.upload_rules_db import render_doc_url
+
 RULES_SCHEMA = """
 type: object
 additionalProperties: false
@@ -80,20 +82,17 @@ def load_yaml_file(file_path: str) -> Any:
 
 def validate_ref_url(rule: Any) -> None:
     """Validate ref url is valid."""
-    if not rule["ref"].startswith("http") and not rule["ref"].startswith("https"):
+    url = render_doc_url(rule["ref"])
+    if not url.startswith("http") and not url.startswith("https"):
         _log_error_and_exit(
-            f"Url missing protocol: \"{rule['ref']}\" from rule \"{rule['name']}\""
+            f"Url missing protocol: \"{url}\" from rule \"{rule['name']}\""
         )
     try:
-        response = requests.get(rule["ref"])
+        response = requests.get(url)
         if not response.status_code == 200:
-            _log_error_and_exit(
-                f"Invalid url: \"{rule['ref']}\" from rule \"{rule['name']}\""
-            )
+            _log_error_and_exit(f"Invalid url: \"{url}\" from rule \"{rule['name']}\"")
     except requests.exceptions.ConnectionError:
-        _log_error_and_exit(
-            f"Invalid url: \"{rule['ref']}\" from rule \"{rule['name']}\""
-        )
+        _log_error_and_exit(f"Invalid url: \"{url}\" from rule \"{rule['name']}\"")
 
 
 def validate_rules_db(rules_db: Dict[str, Any]) -> None:

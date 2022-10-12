@@ -1,6 +1,6 @@
 # Scanner Registry Action
 
-Checks the `rules-db` and `namespace` in the registry repo.
+Checks the `rules.yaml` and `namespace` in the registry repo.
 
 ## Example
 
@@ -36,10 +36,18 @@ jobs:
 
 ## Configuration
 
-### `rules_db_path` (Optional, str)
+### `api_endpoint` (Optional, str)
 
-The path to the `rules-db` directory in the registry repo. Defaults to `scanners/`.
+The url for the boost backend. Defaults to `https://api.boostsecurity.net`.
+
+### `api_token` (Required, str)
+
+The authentication token for the boost backend.
 
 ### `modules_path` (Optional, str)
 
-The path to the `modules` directory in the registry repo. Defaults to `scanners/`.
+The path to the `module.yaml` file in the registry repo. Defaults to `scanners/`.
+
+### `docs_url` (Optional, str)
+
+The url for boost documentation. Defaults to `https://docs.boostsecurity.net`.

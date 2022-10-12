@@ -3,7 +3,7 @@ description: "test action"
 inputs:
   api_endpoint:
     description: "Boost API endpoint"
-    required: true
+    required: false
     default: https://api.boostsecurity.net
   api_token:
     description: "Boost API token"
@@ -12,6 +12,10 @@ inputs:
     description: "Path to the modules directory"
     required: false
     default: "scanners/"
+  docs_url:
+    description: "URL to the documentation"
+    required: false
+    default: "https://docs.boostsecurity.net"
 runs:
   using: "composite"
   steps:
@@ -28,19 +32,27 @@ runs:
       shell: bash
     - name: Validate rules database
       run: |
-        poetry run python ${{ github.action_path }}/boostsec/registry_validator/validate_rules_db.py \
+        poetry run python -m boostsec.registry_validator.validate_rules_db \
           --rules-db-path ${{ inputs.modules_path }}
       shell: bash
+      env:
+        PYTHONPATH: ${{ github.action_path }}
+        BOOSTSEC_DOC_BASE_URL: ${{ inputs.docs_url }}
     - name: Validate namespaces
       run: |
-        poetry run python ${{ github.action_path }}/boostsec/registry_validator/validate_namespaces.py \
+        poetry run python -m boostsec.registry_validator.validate_namespaces \
           --modules-path ${{ inputs.modules_path }}
       shell: bash
+      env:
+        PYTHONPATH: ${{ github.action_path }}
     - name: Upload rules database
       if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
       run: |
         git fetch --deepen=1 --quiet
         git --no-pager diff --name-status HEAD~1 | awk '{print $2}' | \
-          poetry run python ${{ github.action_path }}/boostsec/registry_validator/upload_rules_db.py \
+          poetry run python -m boostsec.registry_validator.upload_rules_db \
           --api-endpoint ${{ inputs.api_endpoint }} --api-token ${{ inputs.api_token }}
       shell: bash
+      env:
+        PYTHONPATH: ${{ github.action_path }}
+        BOOSTSEC_DOC_BASE_URL: ${{ inputs.docs_url }}
