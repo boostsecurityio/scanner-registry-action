@@ -8,8 +8,7 @@ from uuid import uuid4
 import pytest
 import yaml
 from _pytest.monkeypatch import MonkeyPatch
-from aioresponses import aioresponses
-from yarl import URL
+from requests_mock import Mocker
 
 from boostsec.registry_validator.upload_rules_db import (
     main,
@@ -47,28 +46,24 @@ def _create_module_and_rules(
     return module_yaml
 
 
-def test_upload_rules_db(tmp_path: Path, aioresponses: aioresponses) -> None:
+def test_upload_rules_db(tmp_path: Path, requests_mock: Mocker) -> None:
     """Test upload_rules_db."""
     url = "https://my_endpoint/"
-    aioresponses.post(
+    requests_mock.post(
         urljoin(url, "/rules-management/graphql"),
-        payload={
+        json={
             "data": {"setRules": {"__typename": "RuleSuccessSchema"}},
         },
     )
+
     namespace = "namespace-example"
     module_path = _create_module_and_rules(tmp_path, VALID_RULES_DB_STRING, namespace)
 
     upload_rules_db(module_path.parent, url, "my-token")
 
-    assert len(aioresponses.requests) == 1
-    assert (
-        "POST",
-        URL(urljoin(url, "/rules-management/graphql")),
-    ) in aioresponses.requests
-
-    request_kwargs = list(aioresponses.requests.items())[0][1][0].kwargs["json"]
-    assert request_kwargs == {
+    assert requests_mock.call_count == 1
+    assert requests_mock.last_request is not None
+    assert requests_mock.last_request.json() == {
         "query": "mutation setRules($rules: RuleInputSchemas!) {\n  setRules(namespacedRules: $rules) {\n    __typename\n    ... on RuleSuccessSchema {\n      successMessage\n    }\n    ... on RuleErrorSchema {\n      errorMessage\n    }\n  }\n}",  # noqa: E501
         "variables": {
             "rules": {
@@ -99,16 +94,16 @@ def test_upload_rules_db(tmp_path: Path, aioresponses: aioresponses) -> None:
 
 
 def test_upload_rules_db_with_placeholder(
-    aioresponses: aioresponses, tmp_path: Path, monkeypatch: MonkeyPatch
+    requests_mock: Mocker, tmp_path: Path, monkeypatch: MonkeyPatch
 ) -> None:
     """Test upload_rules_db."""
     doc_url = "https://my_doc_url"
     url = "https://my_endpoint"
     env_var_name = "BOOSTSEC_DOC_BASE_URL"
     monkeypatch.setenv(env_var_name, doc_url)
-    aioresponses.post(
+    requests_mock.post(
         urljoin(url, "/rules-management/graphql"),
-        payload={
+        json={
             "data": {"setRules": {"__typename": "RuleSuccessSchema"}},
         },
     )
@@ -119,14 +114,9 @@ def test_upload_rules_db_with_placeholder(
 
     upload_rules_db(module_path.parent, url, "my-token")
 
-    assert len(aioresponses.requests) == 1
-    assert (
-        "POST",
-        URL(urljoin(url, "/rules-management/graphql")),
-    ) in aioresponses.requests
-
-    request_kwargs = list(aioresponses.requests.items())[0][1][0].kwargs["json"]
-    assert request_kwargs == {
+    assert requests_mock.call_count == 1
+    assert requests_mock.last_request is not None
+    assert requests_mock.last_request.json() == {
         "query": "mutation setRules($rules: RuleInputSchemas!) {\n  setRules(namespacedRules: $rules) {\n    __typename\n    ... on RuleSuccessSchema {\n      successMessage\n    }\n    ... on RuleErrorSchema {\n      errorMessage\n    }\n  }\n}",  # noqa: E501
         "variables": {
             "rules": {
@@ -159,14 +149,13 @@ def test_upload_rules_db_with_placeholder(
 def test_upload_rules_db_permission_denied(
     capfd: pytest.CaptureFixture[str],
     tmp_path: Path,
-    aioresponses: aioresponses,
+    requests_mock: Mocker,
 ) -> None:
     """Test upload_rules_db."""
     url = "https://my_endpoint/"
-    aioresponses.post(
+    requests_mock.post(
         urljoin(url, "/rules-management/graphql"),
-        status=200,
-        payload={
+        json={
             "data": None,
             "errors": [
                 {
@@ -192,13 +181,13 @@ def test_upload_rules_db_permission_denied(
 
 
 def test_upload_rules_db_error_response(
-    capfd: pytest.CaptureFixture[str], tmp_path: Path, aioresponses: aioresponses
+    capfd: pytest.CaptureFixture[str], tmp_path: Path, requests_mock: Mocker
 ) -> None:
     """Test upload_rules_db."""
     url = "https://my_endpoint/"
-    aioresponses.post(
+    requests_mock.post(
         urljoin(url, "/rules-management/graphql"),
-        payload={
+        json={
             "data": {
                 "setRules": {
                     "__typename": "RuleErrorSchema",
@@ -250,13 +239,13 @@ def test_main_success(
     mock_check_output: Any,
     capfd: pytest.CaptureFixture[str],
     tmp_path: Path,
-    aioresponses: aioresponses,
+    requests_mock: Mocker,
 ) -> None:
     """Test upload_rules_db."""
     url = "https://my_endpoint/"
-    aioresponses.post(
+    requests_mock.post(
         urljoin(url, "/rules-management/graphql"),
-        payload={
+        json={
             "data": {"setRules": {"__typename": "RuleSuccessSchema"}},
         },
     )
@@ -268,7 +257,7 @@ def test_main_success(
 
     main(url, "my-token")
 
-    assert len(aioresponses.requests) == 1
+    assert requests_mock.call_count == 1
     out, _ = capfd.readouterr()
     assert out == 'Uploading rules "namespace-example-main" "Example Scanner"...\n'
 
@@ -280,13 +269,13 @@ def test_main_success_warning(
     mock_check_output: Any,
     capfd: pytest.CaptureFixture[str],
     tmp_path: Path,
-    aioresponses: aioresponses,
+    requests_mock: Mocker,
 ) -> None:
     """Test upload_rules_db."""
     url = "https://my_endpoint/"
-    aioresponses.post(
+    requests_mock.post(
         urljoin(url, "/rules-management/graphql"),
-        payload={
+        json={
             "data": {"setRules": {"__typename": "RuleSuccessSchema"}},
         },
     )
@@ -304,7 +293,7 @@ def test_main_success_warning(
 
     main(url, "my-token")
 
-    assert len(aioresponses.requests) == 1
+    assert requests_mock.call_count == 1
     out, _ = capfd.readouterr()
     assert "WARNING: rules.yaml not found in " in out
 
@@ -316,13 +305,13 @@ def test_main_no_modules_to_update(
     mock_check_output: Any,
     capfd: pytest.CaptureFixture[str],
     tmp_path: Path,
-    aioresponses: aioresponses,
+    requests_mock: Mocker,
 ) -> None:
     """Test upload_rules_db."""
     mock_subprocess_decode = mock_check_output.return_value.decode
     mock_subprocess_decode.return_value.splitlines.return_value = []
     main("https://my_endpoint/", "my-token")
 
-    assert len(aioresponses.requests) == 0
+    assert requests_mock.call_count == 0
     out, _ = capfd.readouterr()
     assert out == "No module rules to update.\n"

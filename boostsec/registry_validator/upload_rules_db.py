@@ -9,7 +9,7 @@ from urllib.parse import urljoin
 
 import yaml
 from gql import Client, gql
-from gql.transport.aiohttp import AIOHTTPTransport
+from gql.transport.requests import RequestsHTTPTransport
 
 MUTATION = gql(
     """
@@ -120,7 +120,7 @@ def has_rules_yaml(module: Path) -> bool:
 
 def _get_gql_session(api_endpoint: str, header: dict[str, str]) -> Client:
     """Get the gql session."""
-    transport = AIOHTTPTransport(
+    transport = RequestsHTTPTransport(
         url=urljoin(api_endpoint, "/rules-management/graphql"), headers=header
     )
     return Client(transport=transport)
