@@ -130,7 +130,7 @@ def upload_rules_db(module: Path, api_endpoint: str, api_token: str) -> None:
         headers=header,
         data=json.dumps(payload),
     )
-    if response.status_code != 200 or "RuleErrorSchema" == response.text:
+    if response.status_code != 200 or "RuleSuccessSchema" not in response.text:
         _log_error_and_exit(f"Unable to upload rules-db: {response.text}")
 
 
