@@ -10,6 +10,7 @@ from urllib.parse import urljoin
 import yaml
 from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport
+from gql.transport.exceptions import TransportQueryError
 
 MUTATION = gql(
     """
@@ -134,12 +135,18 @@ def upload_rules_db(module: Path, api_endpoint: str, api_token: str) -> None:
     gql_session = _get_gql_session(api_endpoint, header)
 
     print(f'Uploading rules "{namespace}" "{driver}"...')
-    response = gql_session.execute(
-        MUTATION,
-        variable_values=variables,
-    )
+    try:
+        response = gql_session.execute(
+            MUTATION,
+            variable_values=variables,
+        )
+    except TransportQueryError:
+        _log_error_and_exit("Failed to upload rules: Permission denied.")
+
     if response["setRules"]["__typename"] != "RuleSuccessSchema":
-        _log_error_and_exit(response["setRules"]["errorMessage"])
+        _log_error_and_exit(
+            f"Unable to upload rules-db: {response['setRules']['errorMessage']}"
+        )
 
 
 def main(api_endpoint: str, api_token: str) -> None:

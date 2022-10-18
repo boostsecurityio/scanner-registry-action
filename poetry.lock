@@ -2,7 +2,7 @@
 name = "aiohttp"
 version = "3.8.3"
 description = "Async http client/server framework (asyncio)"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.6"
 
@@ -19,10 +19,21 @@ yarl = ">=1.0,<2.0"
 speedups = ["aiodns", "brotli", "cchardet"]
 
 [[package]]
+name = "aioresponses"
+version = "0.7.3"
+description = "Mock out requests made by ClientSession from aiohttp package"
+category = "dev"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+aiohttp = ">=2.0.0,<4.0.0"
+
+[[package]]
 name = "aiosignal"
 version = "1.2.0"
 description = "aiosignal: a list of registered asynchronous callbacks"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.6"
 
@@ -33,7 +44,7 @@ frozenlist = ">=1.1.0"
 name = "async-timeout"
 version = "4.0.2"
 description = "Timeout context manager for asyncio programs"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.6"
 
@@ -41,7 +52,7 @@ python-versions = ">=3.6"
 name = "attrs"
 version = "22.1.0"
 description = "Classes Without Boilerplate"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.5"
 
@@ -112,7 +123,7 @@ python-versions = ">=3.6"
 name = "charset-normalizer"
 version = "2.1.1"
 description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.6.0"
 
@@ -159,6 +170,17 @@ description = "Removes commented-out code."
 category = "dev"
 optional = false
 python-versions = "*"
+
+[[package]]
+name = "faker"
+version = "15.1.1"
+description = "Faker is a Python package that generates fake data for you."
+category = "dev"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+python-dateutil = ">=2.4"
 
 [[package]]
 name = "flake8"
@@ -341,7 +363,7 @@ flake8-plugin-utils = ">=1.3.2,<2.0.0"
 name = "frozenlist"
 version = "1.3.1"
 description = "A list-like structure which implements collections.abc.MutableSequence"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.7"
 
@@ -458,7 +480,7 @@ python-versions = "*"
 name = "multidict"
 version = "6.0.2"
 description = "multidict implementation"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.7"
 
@@ -643,6 +665,17 @@ pytest = ">=4.6"
 testing = ["virtualenv", "pytest-xdist", "six", "process-tests", "hunter", "fields"]
 
 [[package]]
+name = "python-dateutil"
+version = "2.8.2"
+description = "Extensions to the standard Python datetime module"
+category = "dev"
+optional = false
+python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
+
+[package.dependencies]
+six = ">=1.5"
+
+[[package]]
 name = "pyyaml"
 version = "6.0"
 description = "YAML parser and emitter for Python"
@@ -808,7 +841,7 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 name = "yarl"
 version = "1.8.1"
 description = "Yet another URL library"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.7"
 
@@ -822,10 +855,11 @@ testing = []
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "f5c381eaed7207f7b1bdfecb2ec5d591419a644677f57551544e15555c97f078"
+content-hash = "605a5a27117cb6946ce1f74dd09cda475bbbbb95f9d845449e8c3e4e3865e509"
 
 [metadata.files]
 aiohttp = []
+aioresponses = []
 aiosignal = []
 async-timeout = []
 attrs = []
@@ -838,6 +872,7 @@ click = []
 colorama = []
 coverage = []
 eradicate = []
+faker = []
 flake8 = []
 flake8-bandit = []
 flake8-black = []
@@ -880,6 +915,7 @@ pyparsing = []
 pyrsistent = []
 pytest = []
 pytest-cov = []
+python-dateutil = []
 pyyaml = []
 requests = []
 requests-mock = []
