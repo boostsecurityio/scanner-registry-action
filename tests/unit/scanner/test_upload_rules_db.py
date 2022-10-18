@@ -49,8 +49,15 @@ def _create_module_and_rules(
 def test_upload_rules_db(tmp_path: Path, requests_mock: Mocker) -> None:
     """Test upload_rules_db."""
     url = "https://my_endpoint/"
+    test_token = "my-random-key"  # noqa: S105
+
+    def has_auth_token(request: Any) -> bool:
+        assert request.headers["Authorization"] == f"ApiKey {test_token}"
+        return True
+
     requests_mock.post(
         urljoin(url, "/rules-management/graphql"),
+        additional_matcher=has_auth_token,
         json={
             "data": {"setRules": {"__typename": "RuleSuccessSchema"}},
         },
@@ -59,7 +66,7 @@ def test_upload_rules_db(tmp_path: Path, requests_mock: Mocker) -> None:
     namespace = "namespace-example"
     module_path = _create_module_and_rules(tmp_path, VALID_RULES_DB_STRING, namespace)
 
-    upload_rules_db(module_path.parent, url, "my-token")
+    upload_rules_db(module_path.parent, url, test_token)
 
     assert requests_mock.call_count == 1
     assert requests_mock.last_request is not None
