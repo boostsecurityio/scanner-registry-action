@@ -10,7 +10,6 @@ from urllib.parse import urljoin
 import yaml
 from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport
-from gql.transport.exceptions import TransportQueryError
 
 MUTATION = gql(
     """
@@ -140,8 +139,8 @@ def upload_rules_db(module: Path, api_endpoint: str, api_token: str) -> None:
             MUTATION,
             variable_values=variables,
         )
-    except TransportQueryError:
-        _log_error_and_exit("Failed to upload rules: Permission denied.")
+    except Exception as e:  # noqa: WPS440
+        _log_error_and_exit(f"Failed to upload rules: {e}.")
 
     if response["setRules"]["__typename"] != "RuleSuccessSchema":
         _log_error_and_exit(

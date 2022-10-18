@@ -185,7 +185,7 @@ def test_upload_rules_db_permission_denied(
     assert out == "\n".join(
         [
             'Uploading rules "namespace-example" "Example Scanner"...',
-            "ERROR: Failed to upload rules: Permission denied.",  # noqa: E501
+            "ERROR: Failed to upload rules: {'message': 'Permission denied', 'locations': [{'line': 2, 'column': 5}], 'path': ['setRules']}.",  # noqa: E501
             "",
         ]
     )
