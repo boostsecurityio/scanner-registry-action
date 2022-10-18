@@ -16,7 +16,7 @@ tests_no_zope = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>
 name = "backoff"
 version = "2.2.1"
 description = "Function decoration for backoff and retry"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 
@@ -324,13 +324,16 @@ gitdb = ">=4.0.1,<5"
 name = "gql"
 version = "3.4.0"
 description = "GraphQL client for Python"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
 [package.dependencies]
 backoff = ">=1.11.1,<3.0"
 graphql-core = ">=3.2,<3.3"
+requests = {version = ">=2.26,<3", optional = true, markers = "extra == \"requests\""}
+requests-toolbelt = {version = ">=0.9.1,<1", optional = true, markers = "extra == \"requests\""}
+urllib3 = {version = ">=1.26", optional = true, markers = "extra == \"requests\""}
 yarl = ">=1.6,<2.0"
 
 [package.extras]
@@ -347,7 +350,7 @@ websockets = ["websockets (>=9,<10)", "websockets (>=10,<11)"]
 name = "graphql-core"
 version = "3.2.3"
 description = "GraphQL implementation for Python, a port of GraphQL.js, the JavaScript reference implementation for GraphQL."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6,<4"
 
@@ -607,7 +610,7 @@ python-versions = ">=3.6"
 name = "requests"
 version = "2.28.1"
 description = "Python HTTP for Humans."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7, <4"
 
@@ -641,7 +644,7 @@ test = ["fixtures", "mock", "purl", "pytest", "sphinx", "testrepository (>=0.0.1
 name = "requests-toolbelt"
 version = "0.10.0"
 description = "A utility belt for advanced users of python-requests"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
@@ -759,7 +762,7 @@ python-versions = ">=3.7"
 name = "urllib3"
 version = "1.26.12"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*, <4"
 
@@ -772,7 +775,7 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 name = "yarl"
 version = "1.8.1"
 description = "Yet another URL library"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -786,7 +789,7 @@ testing = []
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "8ea0b5bc9d891fc1d5723ba58568a6d80266e15183715013f48849921c6aeb3e"
+content-hash = "6aa1fe8969d33ea7d60760c0f5f6dd3f09a491cd183cfe3052281425651e0441"
 
 [metadata.files]
 attrs = []
