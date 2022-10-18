@@ -11,6 +11,7 @@ python = "^3.9"
 jsonschema = "^3.2.0"
 PyYAML = "^6.0"
 requests = "^2.28.1"
+gql = {extras = ["requests"], version = "^3.4.0"}
 
 [tool.poetry.extras]
 testing = [

@@ -1,13 +1,14 @@
 """Test."""
-import json
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
+from urllib.parse import urljoin
 from uuid import uuid4
 
 import pytest
 import yaml
 from _pytest.monkeypatch import MonkeyPatch
+from requests_mock import Mocker
 
 from boostsec.registry_validator.upload_rules_db import (
     main,
@@ -45,27 +46,32 @@ def _create_module_and_rules(
     return module_yaml
 
 
-@patch("boostsec.registry_validator.upload_rules_db.requests")
-def test_upload_rules_db(mock_requests: Any, tmp_path: Path) -> None:
+def test_upload_rules_db(tmp_path: Path, requests_mock: Mocker) -> None:
     """Test upload_rules_db."""
-    mock_requests.post.return_value.status_code = 200
-    mock_requests.post.return_value.text = "RuleSuccessSchema"
+    url = "https://my_endpoint/"
+    test_token = "my-random-key"  # noqa: S105
+
+    def has_auth_token(request: Any) -> bool:
+        assert request.headers["Authorization"] == f"ApiKey {test_token}"
+        return True
+
+    requests_mock.post(
+        urljoin(url, "/rules-management/graphql"),
+        additional_matcher=has_auth_token,
+        json={
+            "data": {"setRules": {"__typename": "RuleSuccessSchema"}},
+        },
+    )
+
     namespace = "namespace-example"
     module_path = _create_module_and_rules(tmp_path, VALID_RULES_DB_STRING, namespace)
 
-    upload_rules_db(module_path.parent, "https://my_endpoint/", "my-token")
+    upload_rules_db(module_path.parent, url, test_token)
 
-    assert mock_requests.post.call_count == 1
-    assert (
-        mock_requests.post.call_args[0][0]
-        == "https://my_endpoint/rules-management/graphql"
-    )
-    assert mock_requests.post.call_args[1]["headers"] == {
-        "Authorization": "ApiKey my-token",
-        "Content-Type": "application/json",
-    }
-    assert json.loads(mock_requests.post.call_args[1]["data"]) == {
-        "query": "\nmutation setRules($rules: RuleInputSchemas!) {\n    setRules(namespacedRules: $rules){\n        __typename\n        ... on RuleSuccessSchema {\n            successMessage\n        }\n        ... on RuleErrorSchema {\n            errorMessage\n        }\n    }\n}",  # noqa: E501
+    assert requests_mock.call_count == 1
+    assert requests_mock.last_request is not None
+    assert requests_mock.last_request.json() == {
+        "query": "mutation setRules($rules: RuleInputSchemas!) {\n  setRules(namespacedRules: $rules) {\n    __typename\n    ... on RuleSuccessSchema {\n      successMessage\n    }\n    ... on RuleErrorSchema {\n      errorMessage\n    }\n  }\n}",  # noqa: E501
         "variables": {
             "rules": {
                 "namespace": "namespace-example",
@@ -94,33 +100,31 @@ def test_upload_rules_db(mock_requests: Any, tmp_path: Path) -> None:
     }
 
 
-@patch("boostsec.registry_validator.upload_rules_db.requests")
 def test_upload_rules_db_with_placeholder(
-    mock_requests: Any, tmp_path: Path, monkeypatch: MonkeyPatch
+    requests_mock: Mocker, tmp_path: Path, monkeypatch: MonkeyPatch
 ) -> None:
     """Test upload_rules_db."""
+    doc_url = "https://my_doc_url"
+    url = "https://my_endpoint"
     env_var_name = "BOOSTSEC_DOC_BASE_URL"
-    monkeypatch.setenv(env_var_name, "http://test.com")
-    mock_requests.post.return_value.status_code = 200
-    mock_requests.post.return_value.text = "RuleSuccessSchema"
+    monkeypatch.setenv(env_var_name, doc_url)
+    requests_mock.post(
+        urljoin(url, "/rules-management/graphql"),
+        json={
+            "data": {"setRules": {"__typename": "RuleSuccessSchema"}},
+        },
+    )
     namespace = "namespace-example"
     module_path = _create_module_and_rules(
         tmp_path, VALID_RULES_DB_STRING_WITH_PLACEHOLDER, namespace
     )
 
-    upload_rules_db(module_path.parent, "https://my_endpoint/", "my-token")
+    upload_rules_db(module_path.parent, url, "my-token")
 
-    assert mock_requests.post.call_count == 1
-    assert (
-        mock_requests.post.call_args[0][0]
-        == "https://my_endpoint/rules-management/graphql"
-    )
-    assert mock_requests.post.call_args[1]["headers"] == {
-        "Authorization": "ApiKey my-token",
-        "Content-Type": "application/json",
-    }
-    assert json.loads(mock_requests.post.call_args[1]["data"]) == {
-        "query": "\nmutation setRules($rules: RuleInputSchemas!) {\n    setRules(namespacedRules: $rules){\n        __typename\n        ... on RuleSuccessSchema {\n            successMessage\n        }\n        ... on RuleErrorSchema {\n            errorMessage\n        }\n    }\n}",  # noqa: E501
+    assert requests_mock.call_count == 1
+    assert requests_mock.last_request is not None
+    assert requests_mock.last_request.json() == {
+        "query": "mutation setRules($rules: RuleInputSchemas!) {\n  setRules(namespacedRules: $rules) {\n    __typename\n    ... on RuleSuccessSchema {\n      successMessage\n    }\n    ... on RuleErrorSchema {\n      errorMessage\n    }\n  }\n}",  # noqa: E501
         "variables": {
             "rules": {
                 "namespace": "namespace-example",
@@ -132,7 +136,7 @@ def test_upload_rules_db_with_placeholder(
                         "group": "Test group 1",
                         "name": "my-rule-1",
                         "prettyName": "My rule 1",
-                        "ref": "http://test.com/a/b/c",
+                        "ref": f"{doc_url}/a/b/c",
                     },
                     {
                         "categories": ["ALL", "category-2"],
@@ -141,7 +145,7 @@ def test_upload_rules_db_with_placeholder(
                         "group": "Test group 2",
                         "name": "my-rule-2",
                         "prettyName": "My rule 2",
-                        "ref": "http://test.com/d/e/f",
+                        "ref": f"{doc_url}/d/e/f",
                     },
                 ],
             }
@@ -149,52 +153,69 @@ def test_upload_rules_db_with_placeholder(
     }
 
 
-@patch("boostsec.registry_validator.upload_rules_db.requests")
-def test_upload_rules_db_error_400(
-    mock_requests: Any, capfd: pytest.CaptureFixture[str], tmp_path: Path
+def test_upload_rules_db_permission_denied(
+    capfd: pytest.CaptureFixture[str],
+    tmp_path: Path,
+    requests_mock: Mocker,
 ) -> None:
     """Test upload_rules_db."""
-    mock_requests.post.return_value.status_code = 400
-    mock_requests.post.return_value.text = "RuleSuccessSchema"
+    url = "https://my_endpoint/"
+    requests_mock.post(
+        urljoin(url, "/rules-management/graphql"),
+        json={
+            "data": None,
+            "errors": [
+                {
+                    "message": "Permission denied",
+                    "locations": [{"line": 2, "column": 5}],
+                    "path": ["setRules"],
+                }
+            ],
+        },
+    )
     namespace = "namespace-example"
     module_path = _create_module_and_rules(tmp_path, VALID_RULES_DB_STRING, namespace)
-
     with pytest.raises(SystemExit):
         upload_rules_db(module_path.parent, "https://my_endpoint/", "my-token")
     out, _ = capfd.readouterr()
     assert out == "\n".join(
         [
             'Uploading rules "namespace-example" "Example Scanner"...',
-            "ERROR: Unable to upload rules-db: RuleSuccessSchema",
+            "ERROR: Failed to upload rules: {'message': 'Permission denied', 'locations': [{'line': 2, 'column': 5}], 'path': ['setRules']}.",  # noqa: E501
             "",
         ]
     )
 
-    assert mock_requests.post.call_count == 1
 
-
-@patch("boostsec.registry_validator.upload_rules_db.requests")
 def test_upload_rules_db_error_response(
-    mock_requests: Any, capfd: pytest.CaptureFixture[str], tmp_path: Path
+    capfd: pytest.CaptureFixture[str], tmp_path: Path, requests_mock: Mocker
 ) -> None:
     """Test upload_rules_db."""
-    mock_requests.post.return_value.status_code = 200
-    mock_requests.post.return_value.text = "RuleErrorSchema"
+    url = "https://my_endpoint/"
+    requests_mock.post(
+        urljoin(url, "/rules-management/graphql"),
+        json={
+            "data": {
+                "setRules": {
+                    "__typename": "RuleErrorSchema",
+                    "errorMessage": "Error message",
+                }
+            },
+        },
+    )
     namespace = "namespace-example"
     module_path = _create_module_and_rules(tmp_path, VALID_RULES_DB_STRING, namespace)
 
     with pytest.raises(SystemExit):
-        upload_rules_db(module_path.parent, "https://my_endpoint/", "my-token")
+        upload_rules_db(module_path.parent, url, "my-token")
     out, _ = capfd.readouterr()
     assert out == "\n".join(
         [
             'Uploading rules "namespace-example" "Example Scanner"...',
-            "ERROR: Unable to upload rules-db: RuleErrorSchema",
+            "ERROR: Unable to upload rules-db: Error message",
             "",
         ]
     )
-
-    assert mock_requests.post.call_count == 1
 
 
 def test_render_doc_url(monkeypatch: MonkeyPatch) -> None:
@@ -220,43 +241,51 @@ def test_render_doc_url_no_placeholder() -> None:
 
 @patch("boostsec.registry_validator.upload_rules_db.check_output")
 @patch("boostsec.registry_validator.upload_rules_db.check_call")
-@patch("boostsec.registry_validator.upload_rules_db.requests")
 def test_main_success(
-    mock_requests: Any,
     mock_check_call: Any,
     mock_check_output: Any,
     capfd: pytest.CaptureFixture[str],
     tmp_path: Path,
+    requests_mock: Mocker,
 ) -> None:
     """Test upload_rules_db."""
-    mock_requests.post.return_value.status_code = 200
-    mock_requests.post.return_value.text = "RuleSuccessSchema"
+    url = "https://my_endpoint/"
+    requests_mock.post(
+        urljoin(url, "/rules-management/graphql"),
+        json={
+            "data": {"setRules": {"__typename": "RuleSuccessSchema"}},
+        },
+    )
     namespace = "namespace-example-main"
 
     module_path = _create_module_and_rules(tmp_path, VALID_RULES_DB_STRING, namespace)
     mock_subprocess_decode = mock_check_output.return_value.decode
     mock_subprocess_decode.return_value.splitlines.return_value = [str(module_path)]
 
-    main("https://my_endpoint/", "my-token")
+    main(url, "my-token")
 
-    assert mock_requests.post.call_count == 1
+    assert requests_mock.call_count == 1
     out, _ = capfd.readouterr()
     assert out == 'Uploading rules "namespace-example-main" "Example Scanner"...\n'
 
 
 @patch("boostsec.registry_validator.upload_rules_db.check_output")
 @patch("boostsec.registry_validator.upload_rules_db.check_call")
-@patch("boostsec.registry_validator.upload_rules_db.requests")
 def test_main_success_warning(
-    mock_requests: Any,
     mock_check_call: Any,
     mock_check_output: Any,
     capfd: pytest.CaptureFixture[str],
     tmp_path: Path,
+    requests_mock: Mocker,
 ) -> None:
     """Test upload_rules_db."""
-    mock_requests.post.return_value.status_code = 200
-    mock_requests.post.return_value.text = "RuleSuccessSchema"
+    url = "https://my_endpoint/"
+    requests_mock.post(
+        urljoin(url, "/rules-management/graphql"),
+        json={
+            "data": {"setRules": {"__typename": "RuleSuccessSchema"}},
+        },
+    )
     module1 = _create_module_and_rules(
         tmp_path, VALID_RULES_DB_STRING, "namespace-example-main"
     )
@@ -269,28 +298,27 @@ def test_main_success_warning(
         str(module2),
     ]
 
-    main("https://my_endpoint/", "my-token")
+    main(url, "my-token")
 
-    assert mock_requests.post.call_count == 1
+    assert requests_mock.call_count == 1
     out, _ = capfd.readouterr()
     assert "WARNING: rules.yaml not found in " in out
 
 
 @patch("boostsec.registry_validator.upload_rules_db.check_output")
 @patch("boostsec.registry_validator.upload_rules_db.check_call")
-@patch("boostsec.registry_validator.upload_rules_db.requests")
 def test_main_no_modules_to_update(
-    mock_requests: Any,
     mock_check_call: Any,
     mock_check_output: Any,
     capfd: pytest.CaptureFixture[str],
     tmp_path: Path,
+    requests_mock: Mocker,
 ) -> None:
     """Test upload_rules_db."""
     mock_subprocess_decode = mock_check_output.return_value.decode
     mock_subprocess_decode.return_value.splitlines.return_value = []
     main("https://my_endpoint/", "my-token")
 
-    assert mock_requests.post.call_count == 0
+    assert requests_mock.call_count == 0
     out, _ = capfd.readouterr()
     assert out == "No module rules to update.\n"

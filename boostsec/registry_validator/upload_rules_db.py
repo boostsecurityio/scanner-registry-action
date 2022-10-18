@@ -1,6 +1,5 @@
 """Uploads the Rules DB file."""
 import argparse
-import json
 import os
 import sys
 from pathlib import Path
@@ -8,10 +7,12 @@ from subprocess import check_call, check_output  # noqa: S404
 from typing import Any
 from urllib.parse import urljoin
 
-import requests
 import yaml
+from gql import Client, gql
+from gql.transport.requests import RequestsHTTPTransport
 
-MUTATION = """
+MUTATION = gql(
+    """
 mutation setRules($rules: RuleInputSchemas!) {
     setRules(namespacedRules: $rules){
         __typename
@@ -23,6 +24,7 @@ mutation setRules($rules: RuleInputSchemas!) {
         }
     }
 }"""
+)
 
 
 def _log_error_and_exit(message: str) -> None:
@@ -66,7 +68,7 @@ def find_modules() -> list[Path]:
     return [i for i in modules_dic.values() if has_rules_yaml(i)]
 
 
-def _get_header(api_token: str) -> dict[str, Any]:
+def _get_header(api_token: str) -> dict[str, str]:
     """Get the header."""
     return {
         "Authorization": f"ApiKey {api_token}",
@@ -74,31 +76,28 @@ def _get_header(api_token: str) -> dict[str, Any]:
     }
 
 
-def _get_payload(namespace: str, driver: str, module: Path) -> dict[str, Any]:
-    """Get the payload."""
+def _get_variables(namespace: str, driver: str, module: Path) -> dict[str, Any]:
+    """Get the variables."""
     rules_db_path = module / "rules.yaml"
     rules_db_yaml = yaml.safe_load(rules_db_path.read_text())
-    payload = {
-        "query": MUTATION,
-        "variables": {
-            "rules": {
-                "namespace": namespace,
-                "ruleInputs": [
-                    {
-                        "categories": rule["categories"],
-                        "description": rule["description"],
-                        "driver": driver,
-                        "group": rule["group"],
-                        "name": rule["name"],
-                        "prettyName": rule["pretty_name"],
-                        "ref": render_doc_url(rule["ref"]),
-                    }
-                    for _, rule in rules_db_yaml["rules"].items()
-                ],
-            },
+    variables = {
+        "rules": {
+            "namespace": namespace,
+            "ruleInputs": [
+                {
+                    "categories": rule["categories"],
+                    "description": rule["description"],
+                    "driver": driver,
+                    "group": rule["group"],
+                    "name": rule["name"],
+                    "prettyName": rule["pretty_name"],
+                    "ref": render_doc_url(rule["ref"]),
+                }
+                for _, rule in rules_db_yaml["rules"].items()
+            ],
         },
     }
-    return payload
+    return variables
 
 
 def _get_namespace_and_driver(module: Path) -> tuple[str, str]:
@@ -119,19 +118,34 @@ def has_rules_yaml(module: Path) -> bool:
     return True
 
 
+def _get_gql_session(api_endpoint: str, header: dict[str, str]) -> Client:
+    """Get the gql session."""
+    transport = RequestsHTTPTransport(
+        url=urljoin(api_endpoint, "/rules-management/graphql"), headers=header
+    )
+    return Client(transport=transport)
+
+
 def upload_rules_db(module: Path, api_endpoint: str, api_token: str) -> None:
     """Upload the rules.yaml file."""
-    namespace, driver = _get_namespace_and_driver(module)
     header = _get_header(api_token)
-    payload = _get_payload(namespace, driver, module)
+    namespace, driver = _get_namespace_and_driver(module)
+    variables = _get_variables(namespace, driver, module)
+    gql_session = _get_gql_session(api_endpoint, header)
+
     print(f'Uploading rules "{namespace}" "{driver}"...')
-    response = requests.post(
-        urljoin(api_endpoint, "/rules-management/graphql"),
-        headers=header,
-        data=json.dumps(payload),
-    )
-    if response.status_code != 200 or "RuleErrorSchema" == response.text:
-        _log_error_and_exit(f"Unable to upload rules-db: {response.text}")
+    try:
+        response = gql_session.execute(
+            MUTATION,
+            variable_values=variables,
+        )
+    except Exception as e:  # noqa: WPS440
+        _log_error_and_exit(f"Failed to upload rules: {e}.")
+
+    if response["setRules"]["__typename"] != "RuleSuccessSchema":
+        _log_error_and_exit(
+            f"Unable to upload rules-db: {response['setRules']['errorMessage']}"
+        )
 
 
 def main(api_endpoint: str, api_token: str) -> None:
