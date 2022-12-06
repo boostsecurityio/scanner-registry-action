@@ -4,7 +4,7 @@ inputs:
   api_endpoint:
     description: "Boost API endpoint"
     required: false
-    default: https://api.boostsecurity.net
+    default: https://api.boostsecurity.io
   api_token:
     description: "Boost API token"
     required: true
@@ -15,7 +15,7 @@ inputs:
   docs_url:
     description: "URL to the documentation"
     required: false
-    default: "https://docs.boostsecurity.net"
+    default: "https://docs.boostsecurity.io"
 runs:
   using: "composite"
   steps:
