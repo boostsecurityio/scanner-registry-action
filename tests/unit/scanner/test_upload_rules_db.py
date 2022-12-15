@@ -1,7 +1,6 @@
 """Test."""
 from pathlib import Path
 from typing import Any
-from unittest.mock import patch
 from urllib.parse import urljoin
 from uuid import uuid4
 
@@ -239,11 +238,7 @@ def test_render_doc_url_no_placeholder() -> None:
     assert render_doc_url(test_url) == test_url
 
 
-@patch("boostsec.registry_validator.upload_rules_db.check_output")
-@patch("boostsec.registry_validator.upload_rules_db.check_call")
 def test_main_success(
-    mock_check_call: Any,
-    mock_check_output: Any,
     capfd: pytest.CaptureFixture[str],
     tmp_path: Path,
     requests_mock: Mocker,
@@ -258,66 +253,22 @@ def test_main_success(
     )
     namespace = "namespace-example-main"
 
-    module_path = _create_module_and_rules(tmp_path, VALID_RULES_DB_STRING, namespace)
-    mock_subprocess_decode = mock_check_output.return_value.decode
-    mock_subprocess_decode.return_value.splitlines.return_value = [str(module_path)]
+    _create_module_and_rules(tmp_path, VALID_RULES_DB_STRING, namespace)
 
-    main(url, "my-token")
+    main(url, "my-token", str(tmp_path))
 
     assert requests_mock.call_count == 1
     out, _ = capfd.readouterr()
     assert out == 'Uploading rules "namespace-example-main" "Example Scanner"...\n'
 
 
-@patch("boostsec.registry_validator.upload_rules_db.check_output")
-@patch("boostsec.registry_validator.upload_rules_db.check_call")
-def test_main_success_warning(
-    mock_check_call: Any,
-    mock_check_output: Any,
-    capfd: pytest.CaptureFixture[str],
-    tmp_path: Path,
-    requests_mock: Mocker,
-) -> None:
-    """Test upload_rules_db."""
-    url = "https://my_endpoint/"
-    requests_mock.post(
-        urljoin(url, "/rules-management/graphql"),
-        json={
-            "data": {"setRules": {"__typename": "RuleSuccessSchema"}},
-        },
-    )
-    module1 = _create_module_and_rules(
-        tmp_path, VALID_RULES_DB_STRING, "namespace-example-main"
-    )
-    module2 = _create_module_and_rules(
-        tmp_path, VALID_RULES_DB_STRING, "namespace-example-main2", create_rules=False
-    )
-    mock_subprocess_decode = mock_check_output.return_value.decode
-    mock_subprocess_decode.return_value.splitlines.return_value = [
-        str(module1),
-        str(module2),
-    ]
-
-    main(url, "my-token")
-
-    assert requests_mock.call_count == 1
-    out, _ = capfd.readouterr()
-    assert "WARNING: rules.yaml not found in " in out
-
-
-@patch("boostsec.registry_validator.upload_rules_db.check_output")
-@patch("boostsec.registry_validator.upload_rules_db.check_call")
 def test_main_no_modules_to_update(
-    mock_check_call: Any,
-    mock_check_output: Any,
     capfd: pytest.CaptureFixture[str],
     tmp_path: Path,
     requests_mock: Mocker,
 ) -> None:
     """Test upload_rules_db."""
-    mock_subprocess_decode = mock_check_output.return_value.decode
-    mock_subprocess_decode.return_value.splitlines.return_value = []
-    main("https://my_endpoint/", "my-token")
+    main("https://my_endpoint/", "my-token", str(tmp_path))
 
     assert requests_mock.call_count == 0
     out, _ = capfd.readouterr()

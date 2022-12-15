@@ -8,8 +8,8 @@ import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from requests_mock import Mocker
 
+from boostsec.registry_validator.upload_rules_db import find_rules_db_yaml
 from boostsec.registry_validator.validate_rules_db import (
-    find_rules_db_yaml,
     load_yaml_file,
     main,
     validate_all_in_category,
