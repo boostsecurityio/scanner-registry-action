@@ -95,15 +95,6 @@ def _get_namespace_and_driver(module: Path) -> tuple[str, str]:
     return namespace, driver
 
 
-def has_rules_yaml(module: Path) -> bool:
-    """Validate a module."""
-    module_items = list(map(str, module.rglob("*.yaml")))
-    if not any(i.endswith("rules.yaml") for i in module_items):
-        print(f'WARNING: rules.yaml not found in "{module}". Skipping...')
-        return False
-    return True
-
-
 def _get_gql_session(api_endpoint: str, header: dict[str, str]) -> Client:
     """Get the gql session."""
     transport = RequestsHTTPTransport(
