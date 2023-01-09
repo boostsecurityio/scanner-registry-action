@@ -30,7 +30,14 @@ runs:
         cp ${{ github.action_path }}/pyproject.toml ${{ github.action_path }}/poetry.lock . && \
           poetry install --no-root --without dev
       shell: bash
+    - uses: dorny/paths-filter@v2
+      id: rules_changed_in_pr
+      with:
+        filters: |
+          src:
+          - '**/rules.yaml'
     - name: Validate rules database
+      if: steps.rules_changed_in_pr.outputs.workflows == 'true'
       run: |
         poetry run python -m boostsec.registry_validator.validate_rules_db \
           --rules-db-path ${{ inputs.modules_path }}
