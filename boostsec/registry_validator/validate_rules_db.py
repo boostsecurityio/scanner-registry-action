@@ -1,6 +1,5 @@
 """Validates the Rules DB file."""
 import argparse
-import os
 import sys
 from typing import Any, Dict
 
@@ -9,7 +8,10 @@ import yaml
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 
-from boostsec.registry_validator.upload_rules_db import render_doc_url
+from boostsec.registry_validator.upload_rules_db import (
+    find_rules_db_yaml,
+    render_doc_url,
+)
 
 RULES_SCHEMA = """
 type: object
@@ -49,17 +51,6 @@ def _log_error_and_exit(message: str) -> None:
     """Log an error message and exit."""
     print("ERROR: " + message)
     sys.exit(1)
-
-
-def find_rules_db_yaml(rules_db_path: str) -> list[str]:
-    """Find module.yaml files."""
-    rules_db_list = []
-    for root, _, files in os.walk(rules_db_path):
-        for file in files:
-            if file.endswith("rules.yaml"):
-                file_path = os.path.join(root, file)
-                rules_db_list.append(file_path)
-    return rules_db_list
 
 
 def _log_info(message: str) -> None:
