@@ -31,13 +31,13 @@ runs:
           poetry install --no-root --without dev
       shell: bash
     - uses: dorny/paths-filter@v2
-      id: rules_changed_in_pr
+      id: changes
       with:
         filters: |
-          src:
+          rules:
           - '**/rules.yaml'
     - name: Validate rules database
-      if: steps.rules_changed_in_pr.outputs.workflows == 'true'
+      if: steps.changes.rules.outputs.workflows == 'true'
       run: |
         poetry run python -m boostsec.registry_validator.validate_rules_db \
           --rules-db-path ${{ inputs.modules_path }}
