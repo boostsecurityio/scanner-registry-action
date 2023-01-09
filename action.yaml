@@ -37,7 +37,7 @@ runs:
           rules:
           - '**/rules.yaml'
     - name: Validate rules database
-      if: steps.changes.rules.outputs.workflows == 'true'
+      if: steps.changes.outputs.rules == 'true'
       run: |
         poetry run python -m boostsec.registry_validator.validate_rules_db \
           --rules-db-path ${{ inputs.modules_path }}
