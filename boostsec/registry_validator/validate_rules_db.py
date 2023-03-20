@@ -19,7 +19,7 @@ properties:
     type: object
     additionalProperties:
       type: object
-      additionalProperties: false
+      additionalProperties: true
       properties:
         categories:
           type: array

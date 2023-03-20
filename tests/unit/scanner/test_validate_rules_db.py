@@ -151,7 +151,7 @@ rules:
     pretty_name: My rule 1
 """
 
-_INVALID_RULES_DB_STRING_EXTRA_PROPERTY = """
+_VALID_RULES_DB_STRING_EXTRA_PROPERTY = """
 rules:
   my-rule-1:
     categories:
@@ -272,6 +272,11 @@ def test_validate_rules_db_with_valid_rules_db() -> None:
     validate_rules_db(yaml.safe_load(VALID_RULES_DB_STRING))
 
 
+def test_validate_rules_db_with_valid_rules_db_extra_properties() -> None:
+    """Test validate_rules_db with valid rules db."""
+    validate_rules_db(yaml.safe_load(_VALID_RULES_DB_STRING_EXTRA_PROPERTY))
+
+
 @pytest.mark.parametrize(
     ("rule_str", "expected"),
     [
@@ -298,11 +303,6 @@ def test_validate_rules_db_with_valid_rules_db() -> None:
         (
             _INVALID_RULES_DB_STRING_MISSING_REF,
             "ERROR: Rules db is invalid: \"'ref' is a required property\"\n",
-        ),
-        (
-            _INVALID_RULES_DB_STRING_EXTRA_PROPERTY,
-            'ERROR: Rules db is invalid: "Additional properties are not allowed '
-            "('extra_property' was unexpected)\"\n",
         ),
     ],
 )
