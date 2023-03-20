@@ -65,12 +65,7 @@ def validate_namespaces_from_modules_yaml(modules_list: list[Path]) -> None:
     namespaces = {}
     for module in modules_list:
         if namespace := yaml.safe_load(module.read_text()).get("namespace"):
-            if namespace in namespaces:
-                _log_error_and_exit(
-                    f"namespaces are not unique, duplicate: {namespace}"
-                )
-            else:
-                namespaces[namespace] = module
+            namespaces[namespace] = module
         else:
             module_relative_path = "/".join(str(module).split("/")[-4:])
             _log_error_and_exit(f'namespace not found in "{module_relative_path}"')

@@ -87,20 +87,11 @@ def test_main(create_unique_modules: Path, capfd: pytest.CaptureFixture[str]) ->
     )
 
 
-def test_main_error(
+def test_main_repeated_namespaces(
     create_repeated_modules: Path, capfd: pytest.CaptureFixture[str]
 ) -> None:
     """Test main with repeated namespaces."""
-    with pytest.raises(SystemExit):
-        main(str(create_repeated_modules))
-    out, _ = capfd.readouterr()
-    assert out == "\n".join(
-        [
-            "Validating namespaces...",
-            "ERROR: namespaces are not unique, duplicate: test2",
-            "",
-        ]
-    )
+    main(str(create_repeated_modules))
 
 
 def test_main_invalid_module(tmp_path: Path, capfd: pytest.CaptureFixture[str]) -> None:
