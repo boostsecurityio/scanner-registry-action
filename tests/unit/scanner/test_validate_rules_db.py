@@ -1,6 +1,5 @@
 """Test."""
-import re
-from pathlib import PosixPath
+from pathlib import Path, PosixPath
 from uuid import uuid4
 
 import pytest
@@ -14,6 +13,7 @@ from boostsec.registry_validator.validate_rules_db import (
     main,
     validate_all_in_category,
     validate_description_length,
+    validate_imports,
     validate_ref_url,
     validate_rule_name,
     validate_rules,
@@ -46,6 +46,7 @@ rules:
     ref: "http://my.link.com"
 """
 
+
 VALID_RULES_DB_STRING_WITH_PLACEHOLDER = """
 rules:
   my-rule-1:
@@ -67,6 +68,39 @@ rules:
     pretty_name: My rule 2
     ref: "{BOOSTSEC_DOC_BASE_URL}/d/e/f"
 """
+
+
+VALID_RULES_DB_STRING_WITH_IMPORTS = """
+import:
+  - namespace/module-a
+
+rules:
+  my-rule-1:
+    categories:
+      - ALL
+      - category-1
+    description: Lorem Ipsum
+    group: Test group 1
+    name: my-rule-1
+    pretty_name: My rule 1
+    ref: "http://my.link.com"
+  my-rule-2:
+    categories:
+      - ALL
+      - category-2
+    description: Lorem Ipsum
+    group: Test group 2
+    name: my-rule-2
+    pretty_name: My rule 2
+    ref: "http://my.link.com"
+"""
+
+
+VALID_RULES_DB_STRING_WITH_ONLY_IMPORT = """
+import:
+  - namespace/module-a
+"""
+
 
 _INVALID_RULES_DB_STRING_MISSING_CATEGORIES = """
 rules:
@@ -165,6 +199,25 @@ rules:
     extra_property: "extra"
 
 """
+
+
+@pytest.fixture()
+def registry_path(tmp_path: Path) -> Path:
+    """Return a temporary registry directory."""
+    registry = tmp_path / "registry"
+    registry.mkdir(parents=True)
+
+    return registry
+
+
+def _create_module_rules(
+    registry_path: Path, namespace: str, rules_db_string: str
+) -> Path:
+    """Create a module with rules db under provided namespace in registry_path."""
+    module = registry_path / namespace
+    module.mkdir(parents=True)
+    (module / "rules.yaml").write_text(rules_db_string)
+    return module
 
 
 def _create_rules_db_yaml(tmp_path: PosixPath, rules_db_string: str) -> None:
@@ -267,9 +320,17 @@ def test_validate_ref_url_return_404(
     assert out == 'ERROR: Invalid url: "https://example.com" from rule "test"\n'
 
 
-def test_validate_rules_db_with_valid_rules_db() -> None:
+@pytest.mark.parametrize(
+    "rules_db_yaml",
+    [
+        VALID_RULES_DB_STRING,
+        VALID_RULES_DB_STRING_WITH_IMPORTS,
+        VALID_RULES_DB_STRING_WITH_ONLY_IMPORT,
+    ],
+)
+def test_validate_rules_db_with_valid_rules_db(rules_db_yaml: str) -> None:
     """Test validate_rules_db with valid rules db."""
-    validate_rules_db(yaml.safe_load(VALID_RULES_DB_STRING))
+    validate_rules_db(yaml.safe_load(rules_db_yaml))
 
 
 @pytest.mark.parametrize(
@@ -363,75 +424,142 @@ def test_validate_description_length_with_invalid_description(
     assert out == 'ERROR: Rule "test" has a description longer than 512 characters\n'
 
 
+def test_validate_imports_circular_import(
+    registry_path: Path,
+    capfd: pytest.CaptureFixture[str],
+) -> None:
+    """Should notify & exit if an import cycle is found."""
+    _create_module_rules(
+        registry_path,
+        "namespace1/module-a",
+        """
+        import:
+          - namespace2/module-b
+        """,
+    )
+
+    _create_module_rules(
+        registry_path,
+        "namespace2/module-b",
+        """
+        import:
+          - namespace1/module-a
+        """,
+    )
+
+    with pytest.raises(SystemExit):
+        validate_imports(["namespace2/module-b"], registry_path)
+    out, _ = capfd.readouterr()
+    assert out == "ERROR: Import cycle detected\n"
+
+
+def test_validate_imports_missing_import(
+    registry_path: Path,
+    capfd: pytest.CaptureFixture[str],
+) -> None:
+    """Should notify & exit if an import doesn't exists."""
+    _create_module_rules(
+        registry_path,
+        "namespace/module-a",
+        """
+        import:
+          - namespace/module-b
+        """,
+    )
+
+    with pytest.raises(SystemExit):
+        validate_imports(["namespace/module-a"], registry_path)
+    out, _ = capfd.readouterr()
+    assert "ERROR: Rules DB not found" in out
+
+
+@pytest.mark.parametrize(
+    "rules_db_yaml",
+    [
+        VALID_RULES_DB_STRING,
+        VALID_RULES_DB_STRING_WITH_IMPORTS,
+        VALID_RULES_DB_STRING_WITH_ONLY_IMPORT,
+    ],
+)
 def test_validate_rules_with_valid_rules(
-    capfd: pytest.CaptureFixture[str], requests_mock: Mocker
+    rules_db_yaml: str,
+    capfd: pytest.CaptureFixture[str],
+    requests_mock: Mocker,
+    registry_path: Path,
 ) -> None:
     """Test validate_rules with valid rules."""
     requests_mock.get("http://my.link.com", status_code=200)
-    validate_rules(yaml.safe_load(VALID_RULES_DB_STRING))
+    _create_module_rules(
+        registry_path,
+        "namespace/module-a",
+        """
+        import:
+          - namespace/module-b
+        """,
+    )
+    _create_module_rules(
+        registry_path,
+        "namespace/module-b",
+        VALID_RULES_DB_STRING,
+    )
+    validate_rules(yaml.safe_load(rules_db_yaml), registry_path)
     out, _ = capfd.readouterr()
     assert out == ""
 
 
 def test_main_with_valid_rules(
-    capfd: pytest.CaptureFixture[str], requests_mock: Mocker, tmp_path: PosixPath
+    capfd: pytest.CaptureFixture[str], requests_mock: Mocker, registry_path: Path
 ) -> None:
     """Test main with valid rules."""
     requests_mock.get("http://my.link.com", status_code=200)
-    rules_db_path = tmp_path / "rules.yaml"
-    rules_db_path.write_text(VALID_RULES_DB_STRING)
-    main(str(tmp_path))
+    _create_module_rules(registry_path, "namespace/module-name", VALID_RULES_DB_STRING)
+    main(str(registry_path))
     out, _ = capfd.readouterr()
-    assert re.match(
-        r"\n".join(
-            [
-                "^Validating .*/test_main_with_valid_rules0/rules.yaml",
-                "$",
-            ]
-        ),
-        out,
+    assert "Validating namespace/module-name/rules.yaml\n" == out
+
+
+def test_main_with_valid_imports(
+    capfd: pytest.CaptureFixture[str], requests_mock: Mocker, registry_path: Path
+) -> None:
+    """Test main with valid imported rules."""
+    requests_mock.get("http://my.link.com", status_code=200)
+
+    _create_module_rules(
+        registry_path,
+        "testing-ns/testing-module",
+        VALID_RULES_DB_STRING_WITH_ONLY_IMPORT,
     )
+    _create_module_rules(registry_path, "namespace/module-a", VALID_RULES_DB_STRING)
+    main(str(registry_path))
+    out, _ = capfd.readouterr()
+    assert "Validating namespace/module-a/rules.yaml\n" in out
+    assert "Validating testing-ns/testing-module/rules.yaml\n" in out
 
 
 def test_main_with_empty_rules_db(
-    capfd: pytest.CaptureFixture[str], tmp_path: PosixPath
+    capfd: pytest.CaptureFixture[str], registry_path: Path
 ) -> None:
     """Test main with empty rules db."""
-    rules_db_path = tmp_path / "rules.yaml"
-    rules_db_path.write_text("")
+    _create_module_rules(registry_path, "ns/empty", "")
     with pytest.raises(SystemExit):
-        main(str(tmp_path))
+        main(str(registry_path))
     out, _ = capfd.readouterr()
-    assert re.match(
-        r"\n".join(
-            [
-                "^Validating .*/test_main_with_empty_rules_db0/rules.yaml",
-                "ERROR: Rules DB is empty",
-                "$",
-            ]
-        ),
-        out,
-    )
+    assert "Validating ns/empty/rules.yaml\nERROR: Rules DB is empty\n" == out
 
 
 def test_main_with_error(
-    capfd: pytest.CaptureFixture[str], tmp_path: PosixPath
+    capfd: pytest.CaptureFixture[str], registry_path: Path
 ) -> None:
     """Test main with empty rules db."""
-    rules_db_path = tmp_path / "rules.yaml"
-    rules_db_path.write_text(_INVALID_RULES_DB_STRING_MISSING_CATEGORIES)
+    _create_module_rules(
+        registry_path, "ns/invalid", _INVALID_RULES_DB_STRING_MISSING_CATEGORIES
+    )
     with pytest.raises(SystemExit):
-        main(str(tmp_path))
+        main(str(registry_path))
     out, _ = capfd.readouterr()
-    assert re.match(
-        r"\n".join(
-            [
-                "^Validating .*/test_main_with_error0/rules.yaml",
-                "ERROR: Rules db is invalid: \"'categories' is a required property\"",
-                "$",
-            ]
-        ),
-        out,
+    assert (
+        "Validating ns/invalid/rules.yaml\n"
+        "ERROR: Rules db is invalid: \"'categories' is a required property\"\n" == out
     )
 
 

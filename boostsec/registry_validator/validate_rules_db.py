@@ -2,7 +2,8 @@
 import argparse
 import os
 import sys
-from typing import Any, Dict
+from pathlib import Path
+from typing import Any, Dict, Union
 
 import requests
 import yaml
@@ -15,6 +16,10 @@ RULES_SCHEMA = """
 type: object
 additionalProperties: false
 properties:
+  import:
+    type: array
+    items:
+    - type: string
   rules:
     type: object
     additionalProperties:
@@ -67,7 +72,7 @@ def _log_info(message: str) -> None:
     print(message)
 
 
-def load_yaml_file(file_path: str) -> Any:
+def load_yaml_file(file_path: Union[str, Path]) -> Any:
     """Load a YAML file."""
     try:
         with open(file_path, "r") as file:
@@ -123,24 +128,58 @@ def validate_description_length(rule: Dict[str, Any]) -> None:
         )
 
 
-def validate_rules(rules_db: Dict[str, Any]) -> None:
+def validate_imports(imports: list[str], root: Path) -> None:
+    """Validate the imports exists & not circular."""
+    visited: set[str] = set()
+    visited_stack: set[str] = set()
+    for ns in imports:
+        _validate_imports(ns, visited, visited_stack, root)
+
+
+def _validate_imports(
+    namespace: str, visited: set[str], visited_stack: set[str], root: Path
+) -> None:
+    """Recursively validate each namespace imports.
+
+    Validate that:
+        1. imports exists
+        2. imports are not circular
+    """
+    if namespace in visited and namespace in visited_stack:
+        _log_error_and_exit("Import cycle detected")
+    else:
+        visited.add(namespace)
+        visited_stack.add(namespace)
+
+    data = load_yaml_file(root / namespace / "rules.yaml")
+    if imports := data.get("import"):
+        for ns in imports:
+            _validate_imports(ns, visited, visited_stack, root)
+
+    visited_stack.discard(namespace)
+
+
+def validate_rules(rules_db: Dict[str, Any], root: Path) -> None:
     """Validate rules from rules_db."""
     validate_rules_db(rules_db)
-    for rule_name, rule in rules_db["rules"].items():
+    for rule_name, rule in rules_db.get("rules", {}).items():
         validate_rule_name(rule_name, rule)
         validate_ref_url(rule)
         validate_all_in_category(rule)
         validate_description_length(rule)
+    if imports := rules_db.get("import"):
+        validate_imports(imports, root)
 
 
 def main(rules_db_path: str) -> None:
     """Validate the Rules DB file."""
+    root = Path(rules_db_path)
     if rules_db_list := find_rules_db_yaml(rules_db_path):
         for rules_db_path in rules_db_list:
-            relarive_path = "/".join(rules_db_path.split("/")[-3:])
-            _log_info(f"Validating {relarive_path}")
+            relative_path = Path(rules_db_path).relative_to(root)
+            _log_info(f"Validating {relative_path}")
             if rules_db := load_yaml_file(rules_db_path):
-                validate_rules(rules_db)
+                validate_rules(rules_db, root)
             else:
                 _log_error_and_exit("Rules DB is empty")
     else:
