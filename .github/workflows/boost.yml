@@ -18,7 +18,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Native Scanner
-        uses: boostsecurityio/boostsec-scanner-github@v3
+        uses: boostsecurityio/boostsec-scanner-github@v4
         with:
-          action: scan
+          registry_module: boostsecurityio/native-scanner
           api_token: ${{ secrets.BOOST_API_TOKEN }}
