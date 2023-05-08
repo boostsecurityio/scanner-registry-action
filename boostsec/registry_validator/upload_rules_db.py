@@ -11,6 +11,8 @@ import yaml
 from gql import Client, gql
 from gql.transport.requests import RequestsHTTPTransport
 
+RulesDB = dict[str, dict[str, str]]
+
 MUTATION = gql(
     """
 mutation setRules($rules: RuleInputSchemas!) {
@@ -76,10 +78,8 @@ def _get_header(api_token: str) -> dict[str, str]:
     }
 
 
-def _get_variables(namespace: str, driver: str, module: Path) -> dict[str, Any]:
+def _get_variables(namespace: str, driver: str, rules: RulesDB) -> dict[str, Any]:
     """Get the variables."""
-    rules_db_path = module / "rules.yaml"
-    rules_db_yaml = yaml.safe_load(rules_db_path.read_text())
     variables = {
         "rules": {
             "namespace": namespace,
@@ -93,7 +93,7 @@ def _get_variables(namespace: str, driver: str, module: Path) -> dict[str, Any]:
                     "prettyName": rule["pretty_name"],
                     "ref": render_doc_url(rule["ref"]),
                 }
-                for _, rule in rules_db_yaml["rules"].items()
+                for _, rule in rules.items()
             ],
         },
     }
@@ -107,6 +107,20 @@ def _get_namespace_and_driver(module: Path) -> tuple[str, str]:
     namespace = module_yaml["namespace"]
     driver = module_yaml["name"]
     return namespace, driver
+
+
+def _get_rules(namespace: str, root: Path) -> RulesDB:
+    rules_db_path = root / namespace / "rules.yaml"
+    rules_db_yaml = yaml.safe_load(rules_db_path.read_text())
+    rules: RulesDB = {}
+    if imports := rules_db_yaml.get("import"):
+        for ns in imports:
+            rules.update(_get_rules(ns, root))
+
+    if module_rules := rules_db_yaml.get("rules"):
+        rules.update(module_rules)
+
+    return rules
 
 
 def has_rules_yaml(module: Path) -> bool:
@@ -126,11 +140,14 @@ def _get_gql_session(api_endpoint: str, header: dict[str, str]) -> Client:
     return Client(transport=transport)
 
 
-def upload_rules_db(module: Path, api_endpoint: str, api_token: str) -> None:
+def upload_rules_db(
+    module: Path, api_endpoint: str, api_token: str, root: Path
+) -> None:
     """Upload the rules.yaml file."""
     header = _get_header(api_token)
     namespace, driver = _get_namespace_and_driver(module)
-    variables = _get_variables(namespace, driver, module)
+    rules = _get_rules(namespace, root)
+    variables = _get_variables(namespace, driver, rules)
     gql_session = _get_gql_session(api_endpoint, header)
 
     print(f'Uploading rules "{namespace}" "{driver}"...')
@@ -148,14 +165,15 @@ def upload_rules_db(module: Path, api_endpoint: str, api_token: str) -> None:
         )
 
 
-def main(api_endpoint: str, api_token: str) -> None:
+def main(api_endpoint: str, api_token: str, rules_db_path: str) -> None:
     """Validate the Rules DB file."""
+    root = Path(rules_db_path)
     modules = find_modules()
     if len(modules) == 0:
         print("No module rules to update.")
     else:
         for module in modules:
-            upload_rules_db(module, api_endpoint, api_token)
+            upload_rules_db(module, api_endpoint, api_token, root)
 
 
 if __name__ == "__main__":  # pragma: no cover
@@ -171,6 +189,11 @@ if __name__ == "__main__":  # pragma: no cover
         "--api-token",
         help="The GitHub token to use for authentication.",
         required=True,
+    )
+    parser.add_argument(
+        "-r",
+        "--rules-db-path",
+        help="The path of the rule database.",
     )
     args = parser.parse_args()
     main(**vars(args))

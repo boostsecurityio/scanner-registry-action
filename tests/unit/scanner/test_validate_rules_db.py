@@ -201,15 +201,6 @@ rules:
 """
 
 
-@pytest.fixture()
-def registry_path(tmp_path: Path) -> Path:
-    """Return a temporary registry directory."""
-    registry = tmp_path / "registry"
-    registry.mkdir(parents=True)
-
-    return registry
-
-
 def _create_module_rules(
     registry_path: Path, namespace: str, rules_db_string: str
 ) -> Path:
