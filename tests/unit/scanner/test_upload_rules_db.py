@@ -16,6 +16,7 @@ from boostsec.registry_validator.upload_rules_db import (
 )
 from tests.unit.scanner.test_validate_rules_db import (
     VALID_RULES_DB_STRING,
+    VALID_RULES_DB_STRING_WITH_DEFAULT,
     VALID_RULES_DB_STRING_WITH_PLACEHOLDER,
 )
 
@@ -252,6 +253,69 @@ def test_upload_rules_db_with_imports(
                         "driver": "Example Scanner",
                         "group": "Test group 2",
                         "name": "my-rule-2",
+                        "prettyName": "My rule 2",
+                        "ref": "http://my.link.com",
+                    },
+                ],
+            }
+        },
+    }
+
+
+def test_upload_rules_db_with_default(
+    registry_path: Path, requests_mock: Mocker
+) -> None:
+    """Test upload_rules_db with a default rule."""
+    url = "https://my_endpoint/"
+    test_token = "my-random-key"  # noqa: S105
+
+    def has_auth_token(request: Any) -> bool:
+        assert request.headers["Authorization"] == f"ApiKey {test_token}"
+        return True
+
+    requests_mock.post(
+        urljoin(url, "/rules-management/graphql"),
+        additional_matcher=has_auth_token,
+        json={
+            "data": {"setRules": {"__typename": "RuleSuccessSchema"}},
+        },
+    )
+
+    namespace = "namespace-example"
+    module_path = _create_module_and_rules(
+        registry_path, VALID_RULES_DB_STRING_WITH_DEFAULT, namespace
+    )
+
+    upload_rules_db(
+        module_path.parent,
+        url,
+        test_token,
+        registry_path,
+    )
+
+    assert requests_mock.call_count == 1
+    assert requests_mock.last_request is not None
+    assert requests_mock.last_request.json() == {
+        "query": "mutation setRules($rules: RuleInputSchemas!) {\n  setRules(namespacedRules: $rules) {\n    __typename\n    ... on RuleSuccessSchema {\n      successMessage\n    }\n    ... on RuleErrorSchema {\n      errorMessage\n    }\n  }\n}",  # noqa: E501
+        "variables": {
+            "rules": {
+                "namespace": "namespace-example",
+                "ruleInputs": [
+                    {
+                        "categories": ["ALL", "category-1"],
+                        "description": "Lorem Ipsum",
+                        "driver": "Example Scanner",
+                        "group": "Test group 1",
+                        "name": "my-rule-1",
+                        "prettyName": "My rule 1",
+                        "ref": "http://my.link.com",
+                    },
+                    {
+                        "categories": ["ALL", "category-2"],
+                        "description": "Lorem Ipsum",
+                        "driver": "Example Scanner",
+                        "group": "Test group 2",
+                        "name": "default",
                         "prettyName": "My rule 2",
                         "ref": "http://my.link.com",
                     },

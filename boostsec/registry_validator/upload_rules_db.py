@@ -120,6 +120,11 @@ def _get_rules(namespace: str, root: Path) -> RulesDB:
     if module_rules := rules_db_yaml.get("rules"):
         rules.update(module_rules)
 
+    if default := rules_db_yaml.get("default"):
+        default_rule = list(default.values())[0]
+        default_rule["name"] = "default"
+        rules["default"] = default_rule
+
     return rules
 
 
