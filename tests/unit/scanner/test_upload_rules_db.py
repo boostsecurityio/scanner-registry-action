@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 from urllib.parse import urljoin
-from uuid import uuid4
 
 import pytest
 import yaml
@@ -22,13 +21,14 @@ from tests.unit.scanner.test_validate_rules_db import (
 
 
 def _create_module_and_rules(
-    tmp_path: Path, rules_db_string: str, namespace: str = "", create_rules: bool = True
+    registry_path: Path,
+    rules_db_string: str,
+    namespace: str = "",
+    create_rules: bool = True,
 ) -> Path:
     """Create a module.yaml file."""
-    modules_path = tmp_path / uuid4().hex
-    modules_path.mkdir()
-    modules_path = modules_path / "module_name"
-    modules_path.mkdir()
+    modules_path = registry_path / namespace
+    modules_path.mkdir(parents=True)
     module_yaml = modules_path / "module.yaml"
     module_obj = {
         "api_version": 1,
@@ -46,7 +46,7 @@ def _create_module_and_rules(
     return module_yaml
 
 
-def test_upload_rules_db(tmp_path: Path, requests_mock: Mocker) -> None:
+def test_upload_rules_db(registry_path: Path, requests_mock: Mocker) -> None:
     """Test upload_rules_db."""
     url = "https://my_endpoint/"
     test_token = "my-random-key"  # noqa: S105
@@ -64,9 +64,11 @@ def test_upload_rules_db(tmp_path: Path, requests_mock: Mocker) -> None:
     )
 
     namespace = "namespace-example"
-    module_path = _create_module_and_rules(tmp_path, VALID_RULES_DB_STRING, namespace)
+    module_path = _create_module_and_rules(
+        registry_path, VALID_RULES_DB_STRING, namespace
+    )
 
-    upload_rules_db(module_path.parent, url, test_token)
+    upload_rules_db(module_path.parent, url, test_token, registry_path)
 
     assert requests_mock.call_count == 1
     assert requests_mock.last_request is not None
@@ -101,7 +103,7 @@ def test_upload_rules_db(tmp_path: Path, requests_mock: Mocker) -> None:
 
 
 def test_upload_rules_db_with_placeholder(
-    requests_mock: Mocker, tmp_path: Path, monkeypatch: MonkeyPatch
+    requests_mock: Mocker, registry_path: Path, monkeypatch: MonkeyPatch
 ) -> None:
     """Test upload_rules_db."""
     doc_url = "https://my_doc_url"
@@ -116,10 +118,10 @@ def test_upload_rules_db_with_placeholder(
     )
     namespace = "namespace-example"
     module_path = _create_module_and_rules(
-        tmp_path, VALID_RULES_DB_STRING_WITH_PLACEHOLDER, namespace
+        registry_path, VALID_RULES_DB_STRING_WITH_PLACEHOLDER, namespace
     )
 
-    upload_rules_db(module_path.parent, url, "my-token")
+    upload_rules_db(module_path.parent, url, "my-token", registry_path)
 
     assert requests_mock.call_count == 1
     assert requests_mock.last_request is not None
@@ -153,9 +155,115 @@ def test_upload_rules_db_with_placeholder(
     }
 
 
+def test_upload_rules_db_with_imports(
+    requests_mock: Mocker, registry_path: Path
+) -> None:
+    """Test upload_rules_db correctly handles import statement.
+
+    Imported rules should be added to the importer namespace. Rules defined
+    in the importer should overwrite rules defined in the imports. Same goes
+    for multiple imported rules, the last caller take priority.
+    """
+    url = "https://my_endpoint"
+    requests_mock.post(
+        urljoin(url, "/rules-management/graphql"),
+        json={
+            "data": {"setRules": {"__typename": "RuleSuccessSchema"}},
+        },
+    )
+    module_path = _create_module_and_rules(
+        registry_path,
+        """
+        import:
+          - namespace/module-a
+          - namespace/module-c
+
+        rules:
+          my-rule-1:
+            categories:
+              - ALL
+              - category-1
+            description: Defined in B
+            group: Test group 1
+            name: my-rule-1
+            pretty_name: My rule 1
+            ref: "http://my.link.com"
+        """,
+        "namespace/module-b",
+    )
+
+    _create_module_and_rules(
+        registry_path,
+        """
+        import:
+          - namespace/module-a
+        """,
+        "namespace/module-c",
+    )
+
+    _create_module_and_rules(
+        registry_path,
+        """
+        rules:
+          my-rule-1:
+            categories:
+              - ALL
+              - category-1
+            description: Defined in A
+            group: Test group 1
+            name: my-rule-1
+            pretty_name: My rule 1
+            ref: "http://my.link.com"
+          my-rule-2:
+            categories:
+              - ALL
+              - category-2
+            description: Defined in A
+            group: Test group 2
+            name: my-rule-2
+            pretty_name: My rule 2
+            ref: "http://my.link.com"
+        """,
+        "namespace/module-a",
+    )
+
+    upload_rules_db(module_path.parent, url, "my-token", registry_path)
+
+    assert requests_mock.call_count == 1
+    assert requests_mock.last_request is not None
+    assert requests_mock.last_request.json() == {
+        "query": "mutation setRules($rules: RuleInputSchemas!) {\n  setRules(namespacedRules: $rules) {\n    __typename\n    ... on RuleSuccessSchema {\n      successMessage\n    }\n    ... on RuleErrorSchema {\n      errorMessage\n    }\n  }\n}",  # noqa: E501
+        "variables": {
+            "rules": {
+                "namespace": "namespace/module-b",
+                "ruleInputs": [
+                    {
+                        "categories": ["ALL", "category-1"],
+                        "description": "Defined in B",
+                        "driver": "Example Scanner",
+                        "group": "Test group 1",
+                        "name": "my-rule-1",
+                        "prettyName": "My rule 1",
+                        "ref": "http://my.link.com",
+                    },
+                    {
+                        "categories": ["ALL", "category-2"],
+                        "description": "Defined in A",
+                        "driver": "Example Scanner",
+                        "group": "Test group 2",
+                        "name": "my-rule-2",
+                        "prettyName": "My rule 2",
+                        "ref": "http://my.link.com",
+                    },
+                ],
+            }
+        },
+    }
+
+
 def test_upload_rules_db_permission_denied(
     capfd: pytest.CaptureFixture[str],
-    tmp_path: Path,
+    registry_path: Path,
     requests_mock: Mocker,
 ) -> None:
     """Test upload_rules_db."""
@@ -174,9 +282,13 @@ def test_upload_rules_db_permission_denied(
         },
     )
     namespace = "namespace-example"
-    module_path = _create_module_and_rules(tmp_path, VALID_RULES_DB_STRING, namespace)
+    module_path = _create_module_and_rules(
+        registry_path, VALID_RULES_DB_STRING, namespace
+    )
     with pytest.raises(SystemExit):
-        upload_rules_db(module_path.parent, "https://my_endpoint/", "my-token")
+        upload_rules_db(
+            module_path.parent, "https://my_endpoint/", "my-token", registry_path
+        )
     out, _ = capfd.readouterr()
     assert out == "\n".join(
         [
@@ -188,7 +300,7 @@ def test_upload_rules_db_permission_denied(
 
 
 def test_upload_rules_db_error_response(
-    capfd: pytest.CaptureFixture[str], tmp_path: Path, requests_mock: Mocker
+    capfd: pytest.CaptureFixture[str], registry_path: Path, requests_mock: Mocker
 ) -> None:
     """Test upload_rules_db."""
     url = "https://my_endpoint/"
@@ -204,10 +316,12 @@ def test_upload_rules_db_error_response(
         },
     )
     namespace = "namespace-example"
-    module_path = _create_module_and_rules(tmp_path, VALID_RULES_DB_STRING, namespace)
+    module_path = _create_module_and_rules(
+        registry_path, VALID_RULES_DB_STRING, namespace
+    )
 
     with pytest.raises(SystemExit):
-        upload_rules_db(module_path.parent, url, "my-token")
+        upload_rules_db(module_path.parent, url, "my-token", registry_path)
     out, _ = capfd.readouterr()
     assert out == "\n".join(
         [
@@ -245,7 +359,7 @@ def test_main_success(
     mock_check_call: Any,
     mock_check_output: Any,
     capfd: pytest.CaptureFixture[str],
-    tmp_path: Path,
+    registry_path: Path,
     requests_mock: Mocker,
 ) -> None:
     """Test upload_rules_db."""
@@ -258,11 +372,13 @@ def test_main_success(
     )
     namespace = "namespace-example-main"
 
-    module_path = _create_module_and_rules(tmp_path, VALID_RULES_DB_STRING, namespace)
+    module_path = _create_module_and_rules(
+        registry_path, VALID_RULES_DB_STRING, namespace
+    )
     mock_subprocess_decode = mock_check_output.return_value.decode
     mock_subprocess_decode.return_value.splitlines.return_value = [str(module_path)]
 
-    main(url, "my-token")
+    main(url, "my-token", str(registry_path))
 
     assert requests_mock.call_count == 1
     out, _ = capfd.readouterr()
@@ -275,7 +391,7 @@ def test_main_success_warning(
     mock_check_call: Any,
     mock_check_output: Any,
     capfd: pytest.CaptureFixture[str],
-    tmp_path: Path,
+    registry_path: Path,
     requests_mock: Mocker,
 ) -> None:
     """Test upload_rules_db."""
@@ -287,10 +403,13 @@ def test_main_success_warning(
         },
     )
     module1 = _create_module_and_rules(
-        tmp_path, VALID_RULES_DB_STRING, "namespace-example-main"
+        registry_path, VALID_RULES_DB_STRING, "namespace-example-main"
     )
     module2 = _create_module_and_rules(
-        tmp_path, VALID_RULES_DB_STRING, "namespace-example-main2", create_rules=False
+        registry_path,
+        VALID_RULES_DB_STRING,
+        "namespace-example-main2",
+        create_rules=False,
     )
     mock_subprocess_decode = mock_check_output.return_value.decode
     mock_subprocess_decode.return_value.splitlines.return_value = [
@@ -298,7 +417,7 @@ def test_main_success_warning(
         str(module2),
     ]
 
-    main(url, "my-token")
+    main(url, "my-token", str(registry_path))
 
     assert requests_mock.call_count == 1
     out, _ = capfd.readouterr()
@@ -311,13 +430,13 @@ def test_main_no_modules_to_update(
     mock_check_call: Any,
     mock_check_output: Any,
     capfd: pytest.CaptureFixture[str],
-    tmp_path: Path,
+    registry_path: Path,
     requests_mock: Mocker,
 ) -> None:
     """Test upload_rules_db."""
     mock_subprocess_decode = mock_check_output.return_value.decode
     mock_subprocess_decode.return_value.splitlines.return_value = []
-    main("https://my_endpoint/", "my-token")
+    main("https://my_endpoint/", "my-token", str(registry_path))
 
     assert requests_mock.call_count == 0
     out, _ = capfd.readouterr()
