@@ -19,28 +19,35 @@ properties:
   import:
     type: array
     items:
-    - type: string
+      - type: string
   rules:
     type: object
     additionalProperties:
-      type: object
-      additionalProperties: false
-      properties:
-        categories:
-          type: array
-          items:
+      $ref: "#$defs/rule"
+  default:
+    type: object
+    additionalProperties:
+      $ref: "#$defs/rule"
+$defs:
+  rule:
+    type: object
+    additionalProperties: false
+    properties:
+      categories:
+        type: array
+        items:
           - type: string
-        description:
-          type: string
-        group:
-          type: string
-        name:
-          type: string
-        pretty_name:
-          type: string
-        ref:
-          type: string
-      required:
+      description:
+        type: string
+      group:
+        type: string
+      name:
+        type: string
+      pretty_name:
+        type: string
+      ref:
+        type: string
+    required:
       - categories
       - description
       - group
@@ -159,14 +166,25 @@ def _validate_imports(
     visited_stack.discard(namespace)
 
 
+def _validate_rule(rule_name: str, rule: Dict[str, Any]) -> None:
+    """Validate a single rule."""
+    validate_rule_name(rule_name, rule)
+    validate_ref_url(rule)
+    validate_all_in_category(rule)
+    validate_description_length(rule)
+
+
 def validate_rules(rules_db: Dict[str, Any], root: Path) -> None:
     """Validate rules from rules_db."""
     validate_rules_db(rules_db)
     for rule_name, rule in rules_db.get("rules", {}).items():
-        validate_rule_name(rule_name, rule)
-        validate_ref_url(rule)
-        validate_all_in_category(rule)
-        validate_description_length(rule)
+        _validate_rule(rule_name, rule)
+    if default_rule := rules_db.get("default"):
+        default_items = list(default_rule.items())
+        if len(default_items) > 1:
+            _log_error_and_exit("Only one default rule is allowed")
+        default_name, default_rule = default_items[0]
+        _validate_rule(default_name, default_rule)
     if imports := rules_db.get("import"):
         validate_imports(imports, root)
 

@@ -95,6 +95,28 @@ rules:
     ref: "http://my.link.com"
 """
 
+VALID_RULES_DB_STRING_WITH_DEFAULT = """
+rules:
+  my-rule-1:
+    categories:
+      - ALL
+      - category-1
+    description: Lorem Ipsum
+    group: Test group 1
+    name: my-rule-1
+    pretty_name: My rule 1
+    ref: "http://my.link.com"
+default:
+  my-rule-2:
+    categories:
+      - ALL
+      - category-2
+    description: Lorem Ipsum
+    group: Test group 2
+    name: my-rule-2
+    pretty_name: My rule 2
+    ref: "http://my.link.com"
+"""
 
 VALID_RULES_DB_STRING_WITH_ONLY_IMPORT = """
 import:
@@ -185,6 +207,49 @@ rules:
     pretty_name: My rule 1
 """
 
+_INVALID_DEFAULT_RULES_DB_STRING = """
+rules:
+  my-rule-1:
+    categories:
+      - ALL
+      - category-1
+    description: Lorem Ipsum
+    group: Test group 1
+    name: my-rule-1
+    pretty_name: My rule 1
+default:
+  my-rule-2:
+    categories:
+      - ALL
+      - category-2
+    description: Lorem Ipsum
+    group: Test group 2
+    name: my-rule-2
+    pretty_name: My rule 2
+    ref: "http://my.link.com"
+"""
+
+_INVALID_DEFAULT_MULTIPLE_RULES_DB_STRING = """
+default:
+  my-rule-1:
+    categories:
+      - ALL
+      - category-1
+    description: Lorem Ipsum
+    group: Test group 1
+    name: my-rule-1
+    pretty_name: My rule 1
+    ref: "http://my.link.com"
+  my-rule-2:
+    categories:
+      - ALL
+      - category-2
+    description: Lorem Ipsum
+    group: Test group 2
+    name: my-rule-2
+    pretty_name: My rule 2
+    ref: "http://my.link.com"
+"""
 _INVALID_RULES_DB_STRING_EXTRA_PROPERTY = """
 rules:
   my-rule-1:
@@ -317,6 +382,7 @@ def test_validate_ref_url_return_404(
         VALID_RULES_DB_STRING,
         VALID_RULES_DB_STRING_WITH_IMPORTS,
         VALID_RULES_DB_STRING_WITH_ONLY_IMPORT,
+        VALID_RULES_DB_STRING_WITH_DEFAULT,
     ],
 )
 def test_validate_rules_db_with_valid_rules_db(rules_db_yaml: str) -> None:
@@ -355,6 +421,10 @@ def test_validate_rules_db_with_valid_rules_db(rules_db_yaml: str) -> None:
             _INVALID_RULES_DB_STRING_EXTRA_PROPERTY,
             'ERROR: Rules db is invalid: "Additional properties are not allowed '
             "('extra_property' was unexpected)\"\n",
+        ),
+        (
+            _INVALID_DEFAULT_RULES_DB_STRING,
+            "ERROR: Rules db is invalid: \"'ref' is a required property\"\n",
         ),
     ],
 )
@@ -470,6 +540,7 @@ def test_validate_imports_missing_import(
         VALID_RULES_DB_STRING,
         VALID_RULES_DB_STRING_WITH_IMPORTS,
         VALID_RULES_DB_STRING_WITH_ONLY_IMPORT,
+        VALID_RULES_DB_STRING_WITH_DEFAULT,
     ],
 )
 def test_validate_rules_with_valid_rules(
@@ -538,20 +609,31 @@ def test_main_with_empty_rules_db(
     assert "Validating ns/empty/rules.yaml\nERROR: Rules DB is empty\n" == out
 
 
+@pytest.mark.parametrize(
+    ("rules_db_yaml", "expected"),
+    [
+        (
+            _INVALID_RULES_DB_STRING_MISSING_CATEGORIES,
+            "ERROR: Rules db is invalid: \"'categories' is a required property\"",
+        ),
+        (
+            _INVALID_DEFAULT_MULTIPLE_RULES_DB_STRING,
+            "ERROR: Only one default rule is allowed",
+        ),
+    ],
+)
 def test_main_with_error(
-    capfd: pytest.CaptureFixture[str], registry_path: Path
+    capfd: pytest.CaptureFixture[str],
+    registry_path: Path,
+    rules_db_yaml: str,
+    expected: str,
 ) -> None:
     """Test main with empty rules db."""
-    _create_module_rules(
-        registry_path, "ns/invalid", _INVALID_RULES_DB_STRING_MISSING_CATEGORIES
-    )
+    _create_module_rules(registry_path, "ns/invalid", rules_db_yaml)
     with pytest.raises(SystemExit):
         main(str(registry_path))
     out, _ = capfd.readouterr()
-    assert (
-        "Validating ns/invalid/rules.yaml\n"
-        "ERROR: Rules db is invalid: \"'categories' is a required property\"\n" == out
-    )
+    assert f"Validating ns/invalid/rules.yaml\n{expected}\n" == out
 
 
 def test_main_with_without_rules_db(
