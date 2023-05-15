@@ -28,7 +28,7 @@ jobs:
             - venv-0-main-
       - run:
           name: install poetry
-          command: pip3 install --pre "poetry==1.2.0b1"
+          command: pip3 install --pre "poetry==1.4.2"
       - run:
           command: make install
       - run:

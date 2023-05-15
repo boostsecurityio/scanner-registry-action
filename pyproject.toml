@@ -67,8 +67,3 @@ minversion = "6.0"
 addopts = ["-p", "no:anyio", "-p", "asyncio"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-
-[build-system]
-# https://github.com/python-poetry/poetry/issues/4983
-requires = ["poetry-core>=1.1.0a6"]
-build-backend = "poetry.core.masonry.api"
