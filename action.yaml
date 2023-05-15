@@ -23,7 +23,7 @@ runs:
       with:
         python-version: 3.9
     - name: Install poetry
-      run: pip3 install --pre "poetry==1.2.0b1"
+      run: pip3 install --pre "poetry==1.4.2"
       shell: bash
     - name: Install dependencies
       run: |
