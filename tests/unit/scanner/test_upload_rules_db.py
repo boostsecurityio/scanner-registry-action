@@ -47,7 +47,16 @@ def _create_module_and_rules(
     return module_yaml
 
 
-def test_upload_rules_db(registry_path: Path, requests_mock: Mocker) -> None:
+@pytest.mark.parametrize(
+    "namespace",
+    [
+        "namespace-example",
+        "default",
+    ],
+)
+def test_upload_rules_db(
+    registry_path: Path, requests_mock: Mocker, namespace: str
+) -> None:
     """Test upload_rules_db."""
     url = "https://my_endpoint/"
     test_token = "my-random-key"  # noqa: S105
@@ -64,7 +73,11 @@ def test_upload_rules_db(registry_path: Path, requests_mock: Mocker) -> None:
         },
     )
 
-    namespace = "namespace-example"
+    _create_module_and_rules(
+        registry_path,
+        VALID_RULES_DB_STRING,
+        "boostsecurityio/native-scanner",  # Support legacy default scanner name
+    )
     module_path = _create_module_and_rules(
         registry_path, VALID_RULES_DB_STRING, namespace
     )
@@ -77,7 +90,7 @@ def test_upload_rules_db(registry_path: Path, requests_mock: Mocker) -> None:
         "query": "mutation setRules($rules: RuleInputSchemas!) {\n  setRules(namespacedRules: $rules) {\n    __typename\n    ... on RuleSuccessSchema {\n      successMessage\n    }\n    ... on RuleErrorSchema {\n      errorMessage\n    }\n  }\n}",  # noqa: E501
         "variables": {
             "rules": {
-                "namespace": "namespace-example",
+                "namespace": namespace,
                 "ruleInputs": [
                     {
                         "categories": ["ALL", "category-1"],

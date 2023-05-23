@@ -110,6 +110,8 @@ def _get_namespace_and_driver(module: Path) -> tuple[str, str]:
 
 
 def _get_rules(namespace: str, root: Path) -> RulesDB:
+    if namespace == "default":
+        namespace = "boostsecurityio/native-scanner"
     rules_db_path = root / namespace / "rules.yaml"
     rules_db_yaml = yaml.safe_load(rules_db_path.read_text())
     rules: RulesDB = {}
