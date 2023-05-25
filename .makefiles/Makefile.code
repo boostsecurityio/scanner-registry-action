@@ -3,7 +3,7 @@
 #
 install:  ## Install repository dependencies
 install: .phony
-	poetry install --sync --extras testing
+	poetry install --no-ansi --sync --extras testing
 
 update:  ## Update the lock file and virtualenv
 update: poetry.lock install
