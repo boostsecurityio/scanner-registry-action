@@ -5,7 +5,6 @@ from uuid import uuid4
 import pytest
 import yaml
 from _pytest.monkeypatch import MonkeyPatch
-from requests_mock import Mocker
 
 from boostsec.registry_validator.validate_rules_db import (
     find_rules_db_yaml,
@@ -332,48 +331,23 @@ def test_validate_ref_url_with_invalid_url(capfd: pytest.CaptureFixture[str]) ->
     assert out == 'ERROR: Url missing protocol: "invalid_url" from rule "test"\n'
 
 
-def test_validate_ref_url_with_valid_url_with_https(requests_mock: Mocker) -> None:
+def test_validate_ref_url_with_valid_url_with_https() -> None:
     """Test validate_ref_url with valid url."""
-    requests_mock.get("https://example.com", status_code=200)
     validate_ref_url({"name": "test", "ref": "https://example.com"})
 
 
-def test_validate_ref_url_with_valid_url_with_http(requests_mock: Mocker) -> None:
+def test_validate_ref_url_with_valid_url_with_http() -> None:
     """Test validate_ref_url with valid url."""
-    requests_mock.get("http://example.com", status_code=200)
     validate_ref_url({"name": "test", "ref": "http://example.com"})
 
 
 def test_validate_ref_url_with_valid_url_with_placeholder(
-    requests_mock: Mocker, monkeypatch: MonkeyPatch
+    monkeypatch: MonkeyPatch,
 ) -> None:
     """Test validate_ref_url with valid url."""
     env_var_name = "BOOSTSEC_DOC_BASE_URL"
     monkeypatch.setenv(env_var_name, "http://test.com")
-    requests_mock.get("http://test.com/a/b/c", status_code=200)
     validate_ref_url({"name": "test", "ref": f"{{{env_var_name}}}/a/b/c"})
-    assert requests_mock.call_count == 1
-
-
-def test_validate_ref_url_with_invalid_url_exception(
-    capfd: pytest.CaptureFixture[str],
-) -> None:
-    """Test validate_ref_url with invalid url."""
-    with pytest.raises(SystemExit):
-        validate_ref_url({"name": "test", "ref": "https://nonexistingwebsite"})
-    out, _ = capfd.readouterr()
-    assert out == 'ERROR: Invalid url: "https://nonexistingwebsite" from rule "test"\n'
-
-
-def test_validate_ref_url_return_404(
-    requests_mock: Mocker, capfd: pytest.CaptureFixture[str]
-) -> None:
-    """Test validate_ref_url with invalid url."""
-    requests_mock.get("https://example.com", status_code=404)
-    with pytest.raises(SystemExit):
-        validate_ref_url({"name": "test", "ref": "https://example.com"})
-    out, _ = capfd.readouterr()
-    assert out == 'ERROR: Invalid url: "https://example.com" from rule "test"\n'
 
 
 @pytest.mark.parametrize(
@@ -546,11 +520,9 @@ def test_validate_imports_missing_import(
 def test_validate_rules_with_valid_rules(
     rules_db_yaml: str,
     capfd: pytest.CaptureFixture[str],
-    requests_mock: Mocker,
     registry_path: Path,
 ) -> None:
     """Test validate_rules with valid rules."""
-    requests_mock.get("http://my.link.com", status_code=200)
     _create_module_rules(
         registry_path,
         "namespace/module-a",
@@ -570,10 +542,9 @@ def test_validate_rules_with_valid_rules(
 
 
 def test_main_with_valid_rules(
-    capfd: pytest.CaptureFixture[str], requests_mock: Mocker, registry_path: Path
+    capfd: pytest.CaptureFixture[str], registry_path: Path
 ) -> None:
     """Test main with valid rules."""
-    requests_mock.get("http://my.link.com", status_code=200)
     _create_module_rules(registry_path, "namespace/module-name", VALID_RULES_DB_STRING)
     main(str(registry_path))
     out, _ = capfd.readouterr()
@@ -581,11 +552,9 @@ def test_main_with_valid_rules(
 
 
 def test_main_with_valid_imports(
-    capfd: pytest.CaptureFixture[str], requests_mock: Mocker, registry_path: Path
+    capfd: pytest.CaptureFixture[str], registry_path: Path
 ) -> None:
     """Test main with valid imported rules."""
-    requests_mock.get("http://my.link.com", status_code=200)
-
     _create_module_rules(
         registry_path,
         "testing-ns/testing-module",

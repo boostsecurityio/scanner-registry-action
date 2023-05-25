@@ -5,7 +5,6 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Union
 
-import requests
 import yaml
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
@@ -99,12 +98,6 @@ def validate_ref_url(rule: Any) -> None:
         _log_error_and_exit(
             f"Url missing protocol: \"{url}\" from rule \"{rule['name']}\""
         )
-    try:
-        response = requests.get(url)
-        if not response.status_code == 200:
-            _log_error_and_exit(f"Invalid url: \"{url}\" from rule \"{rule['name']}\"")
-    except requests.exceptions.ConnectionError:
-        _log_error_and_exit(f"Invalid url: \"{url}\" from rule \"{rule['name']}\"")
 
 
 def validate_rules_db(rules_db: Dict[str, Any]) -> None:
