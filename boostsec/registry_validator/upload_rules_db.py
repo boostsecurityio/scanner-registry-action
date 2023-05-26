@@ -4,7 +4,7 @@ import os
 import sys
 from pathlib import Path
 from subprocess import check_call, check_output  # noqa: S404
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import urljoin
 
 import yaml
@@ -78,11 +78,14 @@ def _get_header(api_token: str) -> dict[str, str]:
     }
 
 
-def _get_variables(namespace: str, driver: str, rules: RulesDB) -> dict[str, Any]:
+def _get_variables(
+    namespace: str, driver: str, rules: RulesDB, default_rule: Optional[str] = None
+) -> dict[str, Any]:
     """Get the variables."""
     variables = {
         "rules": {
             "namespace": namespace,
+            "defaultRule": default_rule,
             "ruleInputs": [
                 {
                     "categories": rule["categories"],
@@ -109,25 +112,27 @@ def _get_namespace_and_driver(module: Path) -> tuple[str, str]:
     return namespace, driver
 
 
-def _get_rules(namespace: str, root: Path) -> RulesDB:
+def _get_rules_and_default(namespace: str, root: Path) -> tuple[RulesDB, Optional[str]]:
+    """Get the rules and default rule if applicable."""
     if namespace == "default":
         namespace = "boostsecurityio/native-scanner"
     rules_db_path = root / namespace / "rules.yaml"
     rules_db_yaml = yaml.safe_load(rules_db_path.read_text())
     rules: RulesDB = {}
+    default_rule = None
     if imports := rules_db_yaml.get("import"):
         for ns in imports:
-            rules.update(_get_rules(ns, root))
+            import_rules, _ = _get_rules_and_default(ns, root)
+            rules.update(import_rules)
 
     if module_rules := rules_db_yaml.get("rules"):
         rules.update(module_rules)
 
     if default := rules_db_yaml.get("default"):
-        default_rule = list(default.values())[0]
-        default_rule["name"] = "default"
-        rules["default"] = default_rule
+        rules.update(default)
+        default_rule = next(iter(default.keys()))
 
-    return rules
+    return rules, default_rule
 
 
 def has_rules_yaml(module: Path) -> bool:
@@ -153,8 +158,8 @@ def upload_rules_db(
     """Upload the rules.yaml file."""
     header = _get_header(api_token)
     namespace, driver = _get_namespace_and_driver(module)
-    rules = _get_rules(namespace, root)
-    variables = _get_variables(namespace, driver, rules)
+    rules, default_rule = _get_rules_and_default(namespace, root)
+    variables = _get_variables(namespace, driver, rules, default_rule)
     gql_session = _get_gql_session(api_endpoint, header)
 
     print(f'Uploading rules "{namespace}" "{driver}"...')
