@@ -15,7 +15,7 @@ inputs:
   rules_realm_path:
     description: "Path to the rules realm directory"
     required: false
-    default: "rules-reaml/"
+    default: "rules-realm/"
   docs_url:
     description: "URL to the documentation"
     required: false
