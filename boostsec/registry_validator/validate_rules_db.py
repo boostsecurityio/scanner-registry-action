@@ -199,10 +199,10 @@ def validate_rules(rules_db: Dict[str, Any], config: RegistryConfig) -> None:
         validate_imports(imports, config)
 
 
-def main(scanners_path: Path, rules_realm_path: Path) -> None:
+def main(scanners_path: str, rules_realm_path: str) -> None:
     """Validate the Rules DB file."""
     config = RegistryConfig(
-        scanners_path=scanners_path, rules_realm_path=rules_realm_path
+        scanners_path=Path(scanners_path), rules_realm_path=Path(rules_realm_path)
     )
     if rules_db_list := find_rules_db_yaml(config):
         for rules_db_path in rules_db_list:

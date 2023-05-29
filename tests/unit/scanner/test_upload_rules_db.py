@@ -469,7 +469,7 @@ def test_main_success(
     mock_subprocess_decode = mock_check_output.return_value.decode
     mock_subprocess_decode.return_value.splitlines.return_value = [str(module_path)]
 
-    main(url, "my-token", scanners_path, rules_realm_path)
+    main(url, "my-token", str(scanners_path), str(rules_realm_path))
 
     assert requests_mock.call_count == 1
     out, _ = capfd.readouterr()
@@ -509,7 +509,7 @@ def test_main_success_warning(
         str(module2),
     ]
 
-    main(url, "my-token", scanners_path, rules_realm_path)
+    main(url, "my-token", str(scanners_path), str(rules_realm_path))
 
     assert requests_mock.call_count == 1
     out, _ = capfd.readouterr()
@@ -529,7 +529,7 @@ def test_main_no_modules_to_update(
     """Test upload_rules_db."""
     mock_subprocess_decode = mock_check_output.return_value.decode
     mock_subprocess_decode.return_value.splitlines.return_value = []
-    main("https://my_endpoint/", "my-token", scanners_path, rules_realm_path)
+    main("https://my_endpoint/", "my-token", str(scanners_path), str(rules_realm_path))
 
     assert requests_mock.call_count == 0
     out, _ = capfd.readouterr()

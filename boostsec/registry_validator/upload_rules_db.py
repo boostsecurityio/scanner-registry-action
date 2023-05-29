@@ -188,10 +188,12 @@ def upload_rules_db(
 
 
 def main(
-    api_endpoint: str, api_token: str, scanners_path: Path, rules_realm_path: Path
+    api_endpoint: str, api_token: str, scanners_path: str, rules_realm_path: str
 ) -> None:
     """Validate the Rules DB file."""
-    config = RegistryConfig(scanners_path, rules_realm_path)
+    config = RegistryConfig(
+        scanners_path=Path(scanners_path), rules_realm_path=Path(rules_realm_path)
+    )
     modules = find_modules()
     if len(modules) == 0:
         print("No module rules to update.")

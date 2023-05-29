@@ -566,7 +566,7 @@ def test_main_with_valid_rules(
     _create_module_rules(
         rules_realm_path, "namespace/realm-name", VALID_RULES_DB_STRING
     )
-    main(scanners_path, rules_realm_path)
+    main(str(scanners_path), str(rules_realm_path))
     out, _ = capfd.readouterr()
     assert (
         "Validating namespace/module-name/rules.yaml\n"
@@ -586,7 +586,7 @@ def test_main_with_valid_imports(
         VALID_RULES_DB_STRING_WITH_ONLY_IMPORT,
     )
     _create_module_rules(scanners_path, "namespace/module-a", VALID_RULES_DB_STRING)
-    main(scanners_path, rules_realm_path)
+    main(str(scanners_path), str(rules_realm_path))
     out, _ = capfd.readouterr()
     assert "Validating namespace/module-a/rules.yaml\n" in out
     assert "Validating testing-ns/testing-module/rules.yaml\n" in out
@@ -604,7 +604,7 @@ def test_main_with_valid_imports_from_realm(
         VALID_RULES_DB_STRING_WITH_ONLY_IMPORT,
     )
     _create_module_rules(rules_realm_path, "namespace/module-a", VALID_RULES_DB_STRING)
-    main(scanners_path, rules_realm_path)
+    main(str(scanners_path), str(rules_realm_path))
     out, _ = capfd.readouterr()
     assert "Validating namespace/module-a/rules.yaml\n" in out
     assert "Validating testing-ns/testing-module/rules.yaml\n" in out
@@ -622,7 +622,7 @@ def test_main_with_empty_rules_db(
         rules_realm_path if from_realm else scanners_path, "ns/empty", ""
     )
     with pytest.raises(SystemExit):
-        main(scanners_path, rules_realm_path)
+        main(str(scanners_path), str(rules_realm_path))
     out, _ = capfd.readouterr()
     assert "Validating ns/empty/rules.yaml\nERROR: Rules DB is empty\n" == out
 
@@ -654,7 +654,7 @@ def test_main_with_error(
         rules_realm_path if from_realm else scanners_path, "ns/invalid", rules_db_yaml
     )
     with pytest.raises(SystemExit):
-        main(scanners_path, rules_realm_path)
+        main(str(scanners_path), str(rules_realm_path))
     out, _ = capfd.readouterr()
     assert f"Validating ns/invalid/rules.yaml\n{expected}\n" == out
 
@@ -663,6 +663,6 @@ def test_main_with_without_rules_db(
     capfd: pytest.CaptureFixture[str], tmp_path: PosixPath
 ) -> None:
     """Test main with empty rules db."""
-    main(tmp_path, tmp_path)
+    main(str(tmp_path), str(tmp_path))
     out, _ = capfd.readouterr()
     assert out == "No Rules DB found\n"
