@@ -48,6 +48,10 @@ The authentication token for the boost backend.
 
 The path to the `module.yaml` file in the registry repo. Defaults to `scanners/`.
 
+### `rules_realm_path` (Optional, str)
+
+The path to the `rules.yaml` file in the registry repo. Defaults to `rules-realm/`.
+
 ### `docs_url` (Optional, str)
 
 The url for boost documentation. Defaults to `https://docs.boostsecurity.net`.

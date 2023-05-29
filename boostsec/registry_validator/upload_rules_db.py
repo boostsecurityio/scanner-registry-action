@@ -11,6 +11,8 @@ import yaml
 from gql import Client, gql
 from gql.transport.requests import RequestsHTTPTransport
 
+from boostsec.registry_validator.shared import RegistryConfig
+
 RulesDB = dict[str, dict[str, str]]
 
 MUTATION = gql(
@@ -112,17 +114,25 @@ def _get_namespace_and_driver(module: Path) -> tuple[str, str]:
     return namespace, driver
 
 
-def _get_rules_and_default(namespace: str, root: Path) -> tuple[RulesDB, Optional[str]]:
+def _get_rules_and_default(
+    namespace: str, config: RegistryConfig
+) -> tuple[RulesDB, Optional[str]]:
     """Get the rules and default rule if applicable."""
     if namespace == "default":
         namespace = "boostsecurityio/native-scanner"
-    rules_db_path = root / namespace / "rules.yaml"
-    rules_db_yaml = yaml.safe_load(rules_db_path.read_text())
+
+    scanners_path = config.scanners_path / namespace / "rules.yaml"
+    rules_realm_path = config.rules_realm_path / namespace / "rules.yaml"
+    if scanners_path.exists():
+        rules_db_yaml = yaml.safe_load(scanners_path.read_text())
+    else:
+        rules_db_yaml = yaml.safe_load(rules_realm_path.read_text())
+
     rules: RulesDB = {}
     default_rule = None
     if imports := rules_db_yaml.get("import"):
         for ns in imports:
-            import_rules, _ = _get_rules_and_default(ns, root)
+            import_rules, _ = _get_rules_and_default(ns, config)
             rules.update(import_rules)
 
     if module_rules := rules_db_yaml.get("rules"):
@@ -153,12 +163,12 @@ def _get_gql_session(api_endpoint: str, header: dict[str, str]) -> Client:
 
 
 def upload_rules_db(
-    module: Path, api_endpoint: str, api_token: str, root: Path
+    module: Path, api_endpoint: str, api_token: str, config: RegistryConfig
 ) -> None:
     """Upload the rules.yaml file."""
     header = _get_header(api_token)
     namespace, driver = _get_namespace_and_driver(module)
-    rules, default_rule = _get_rules_and_default(namespace, root)
+    rules, default_rule = _get_rules_and_default(namespace, config)
     variables = _get_variables(namespace, driver, rules, default_rule)
     gql_session = _get_gql_session(api_endpoint, header)
 
@@ -177,15 +187,17 @@ def upload_rules_db(
         )
 
 
-def main(api_endpoint: str, api_token: str, rules_db_path: str) -> None:
+def main(
+    api_endpoint: str, api_token: str, scanners_path: Path, rules_realm_path: Path
+) -> None:
     """Validate the Rules DB file."""
-    root = Path(rules_db_path)
+    config = RegistryConfig(scanners_path, rules_realm_path)
     modules = find_modules()
     if len(modules) == 0:
         print("No module rules to update.")
     else:
         for module in modules:
-            upload_rules_db(module, api_endpoint, api_token, root)
+            upload_rules_db(module, api_endpoint, api_token, config)
 
 
 if __name__ == "__main__":  # pragma: no cover
