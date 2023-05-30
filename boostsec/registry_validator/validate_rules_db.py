@@ -1,14 +1,15 @@
 """Validates the Rules DB file."""
 import argparse
-import os
 import sys
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Union
+from typing import Any, Dict
 
 import yaml
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 
+from boostsec.registry_validator.shared import RegistryConfig
 from boostsec.registry_validator.upload_rules_db import render_doc_url
 
 RULES_SCHEMA = """
@@ -56,21 +57,29 @@ $defs:
 """
 
 
+@dataclass
+class RulesDbPath:
+    """Path to a RulesDB with the root path."""
+
+    root: Path
+    path: Path
+
+
 def _log_error_and_exit(message: str) -> None:
     """Log an error message and exit."""
     print("ERROR: " + message)
     sys.exit(1)
 
 
-def find_rules_db_yaml(rules_db_path: str) -> list[str]:
-    """Find module.yaml files."""
-    rules_db_list = []
-    for root, _, files in os.walk(rules_db_path):
-        for file in files:
-            if file.endswith("rules.yaml"):
-                file_path = os.path.join(root, file)
-                rules_db_list.append(file_path)
-    return rules_db_list
+def find_rules_db_yaml(config: RegistryConfig) -> list[RulesDbPath]:
+    """Find rules.yaml files."""
+    return [
+        RulesDbPath(root=config.scanners_path, path=path)
+        for path in config.scanners_path.rglob("rules.yaml")
+    ] + [
+        RulesDbPath(root=config.rules_realm_path, path=path)
+        for path in config.rules_realm_path.rglob("rules.yaml")
+    ]
 
 
 def _log_info(message: str) -> None:
@@ -78,12 +87,11 @@ def _log_info(message: str) -> None:
     print(message)
 
 
-def load_yaml_file(file_path: Union[str, Path]) -> Any:
+def load_yaml_file(file_path: Path) -> Any:
     """Load a YAML file."""
     try:
-        with open(file_path, "r") as file:
-            if rules_db := yaml.safe_load(file):
-                return rules_db
+        if rules_db := yaml.safe_load(file_path.read_text()):
+            return rules_db
     except FileNotFoundError:
         _log_error_and_exit(f"Rules DB not found: {file_path}")
     except yaml.YAMLError:
@@ -128,16 +136,16 @@ def validate_description_length(rule: Dict[str, Any]) -> None:
         )
 
 
-def validate_imports(imports: list[str], root: Path) -> None:
+def validate_imports(imports: list[str], config: RegistryConfig) -> None:
     """Validate the imports exists & not circular."""
     visited: set[str] = set()
     visited_stack: set[str] = set()
     for ns in imports:
-        _validate_imports(ns, visited, visited_stack, root)
+        _validate_imports(ns, visited, visited_stack, config)
 
 
 def _validate_imports(
-    namespace: str, visited: set[str], visited_stack: set[str], root: Path
+    namespace: str, visited: set[str], visited_stack: set[str], config: RegistryConfig
 ) -> None:
     """Recursively validate each namespace imports.
 
@@ -151,10 +159,19 @@ def _validate_imports(
         visited.add(namespace)
         visited_stack.add(namespace)
 
-    data = load_yaml_file(root / namespace / "rules.yaml")
+    scanner_path = config.scanners_path / namespace / "rules.yaml"
+    rules_realm_path = config.rules_realm_path / namespace / "rules.yaml"
+    data = {}
+    if scanner_path.exists():
+        data = load_yaml_file(scanner_path)
+    elif rules_realm_path.exists():
+        data = load_yaml_file(rules_realm_path)
+    else:
+        _log_error_and_exit(f"Imported namespace {namespace} not found")
+
     if imports := data.get("import"):
         for ns in imports:
-            _validate_imports(ns, visited, visited_stack, root)
+            _validate_imports(ns, visited, visited_stack, config)
 
     visited_stack.discard(namespace)
 
@@ -167,7 +184,7 @@ def _validate_rule(rule_name: str, rule: Dict[str, Any]) -> None:
     validate_description_length(rule)
 
 
-def validate_rules(rules_db: Dict[str, Any], root: Path) -> None:
+def validate_rules(rules_db: Dict[str, Any], config: RegistryConfig) -> None:
     """Validate rules from rules_db."""
     validate_rules_db(rules_db)
     for rule_name, rule in rules_db.get("rules", {}).items():
@@ -179,18 +196,21 @@ def validate_rules(rules_db: Dict[str, Any], root: Path) -> None:
         default_name, default_rule = default_items[0]
         _validate_rule(default_name, default_rule)
     if imports := rules_db.get("import"):
-        validate_imports(imports, root)
+        validate_imports(imports, config)
 
 
-def main(rules_db_path: str) -> None:
+def main(scanners_path: str, rules_realm_path: str) -> None:
     """Validate the Rules DB file."""
-    root = Path(rules_db_path)
-    if rules_db_list := find_rules_db_yaml(rules_db_path):
+    config = RegistryConfig(
+        scanners_path=Path(scanners_path), rules_realm_path=Path(rules_realm_path)
+    )
+    if rules_db_list := find_rules_db_yaml(config):
         for rules_db_path in rules_db_list:
-            relative_path = Path(rules_db_path).relative_to(root)
-            _log_info(f"Validating {relative_path}")
-            if rules_db := load_yaml_file(rules_db_path):
-                validate_rules(rules_db, root)
+            _log_info(
+                f"Validating {rules_db_path.path.relative_to(rules_db_path.root)}"
+            )
+            if rules_db := load_yaml_file(rules_db_path.path):
+                validate_rules(rules_db, config)
             else:
                 _log_error_and_exit("Rules DB is empty")
     else:
@@ -200,9 +220,14 @@ def main(rules_db_path: str) -> None:
 if __name__ == "__main__":  # pragma: no cover
     parser = argparse.ArgumentParser(description="Process a rule database.")
     parser.add_argument(
+        "-s",
+        "--scanners-path",
+        help="The path of scanners.",
+    )
+    parser.add_argument(
         "-r",
-        "--rules-db-path",
-        help="The path of the rule database.",
+        "--rules-realm-path",
+        help="The path of rules realm.",
     )
     args = parser.parse_args()
     main(**vars(args))

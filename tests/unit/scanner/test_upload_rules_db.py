@@ -9,6 +9,7 @@ import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from requests_mock import Mocker
 
+from boostsec.registry_validator.shared import RegistryConfig
 from boostsec.registry_validator.upload_rules_db import (
     main,
     render_doc_url,
@@ -47,6 +48,18 @@ def _create_module_and_rules(
     return module_yaml
 
 
+def _create_rules_realm(
+    registry_path: Path, rules_db_string: str, namespace: str = ""
+) -> Path:
+    """Create a rules-realm."""
+    realm_path = registry_path / namespace
+    realm_path.mkdir(parents=True)
+    rules_yaml = realm_path / "rules.yaml"
+    rules_yaml.write_text(rules_db_string)
+
+    return rules_yaml
+
+
 @pytest.mark.parametrize(
     "namespace",
     [
@@ -55,7 +68,7 @@ def _create_module_and_rules(
     ],
 )
 def test_upload_rules_db(
-    registry_path: Path, requests_mock: Mocker, namespace: str
+    registry_config: RegistryConfig, requests_mock: Mocker, namespace: str
 ) -> None:
     """Test upload_rules_db."""
     url = "https://my_endpoint/"
@@ -74,15 +87,15 @@ def test_upload_rules_db(
     )
 
     _create_module_and_rules(
-        registry_path,
+        registry_config.scanners_path,
         VALID_RULES_DB_STRING,
         "boostsecurityio/native-scanner",  # Support legacy default scanner name
     )
     module_path = _create_module_and_rules(
-        registry_path, VALID_RULES_DB_STRING, namespace
+        registry_config.scanners_path, VALID_RULES_DB_STRING, namespace
     )
 
-    upload_rules_db(module_path.parent, url, test_token, registry_path)
+    upload_rules_db(module_path.parent, url, test_token, registry_config)
 
     assert requests_mock.call_count == 1
     assert requests_mock.last_request is not None
@@ -118,7 +131,7 @@ def test_upload_rules_db(
 
 
 def test_upload_rules_db_with_placeholder(
-    requests_mock: Mocker, registry_path: Path, monkeypatch: MonkeyPatch
+    requests_mock: Mocker, registry_config: RegistryConfig, monkeypatch: MonkeyPatch
 ) -> None:
     """Test upload_rules_db."""
     doc_url = "https://my_doc_url"
@@ -133,10 +146,10 @@ def test_upload_rules_db_with_placeholder(
     )
     namespace = "namespace-example"
     module_path = _create_module_and_rules(
-        registry_path, VALID_RULES_DB_STRING_WITH_PLACEHOLDER, namespace
+        registry_config.scanners_path, VALID_RULES_DB_STRING_WITH_PLACEHOLDER, namespace
     )
 
-    upload_rules_db(module_path.parent, url, "my-token", registry_path)
+    upload_rules_db(module_path.parent, url, "my-token", registry_config)
 
     assert requests_mock.call_count == 1
     assert requests_mock.last_request is not None
@@ -171,8 +184,9 @@ def test_upload_rules_db_with_placeholder(
     }
 
 
+@pytest.mark.parametrize("from_realm", [True, False])
 def test_upload_rules_db_with_imports(
-    requests_mock: Mocker, registry_path: Path
+    requests_mock: Mocker, registry_config: RegistryConfig, from_realm: bool
 ) -> None:
     """Test upload_rules_db correctly handles import statement.
 
@@ -188,7 +202,7 @@ def test_upload_rules_db_with_imports(
         },
     )
     module_path = _create_module_and_rules(
-        registry_path,
+        registry_config.scanners_path,
         """
         import:
           - namespace/module-a
@@ -208,18 +222,25 @@ def test_upload_rules_db_with_imports(
         "namespace/module-b",
     )
 
-    _create_module_and_rules(
-        registry_path,
-        """
-        import:
-          - namespace/module-a
-        """,
-        "namespace/module-c",
-    )
+    module_c = """
+            import:
+              - namespace/module-a
+            """
 
-    _create_module_and_rules(
-        registry_path,
-        """
+    if from_realm:
+        _create_rules_realm(
+            registry_config.rules_realm_path,
+            module_c,
+            "namespace/module-c",
+        )
+    else:
+        _create_module_and_rules(
+            registry_config.scanners_path,
+            module_c,
+            "namespace/module-c",
+        )
+
+    module_a = """
         rules:
           my-rule-1:
             categories:
@@ -239,11 +260,22 @@ def test_upload_rules_db_with_imports(
             name: my-rule-2
             pretty_name: My rule 2
             ref: "http://my.link.com"
-        """,
-        "namespace/module-a",
-    )
+        """
 
-    upload_rules_db(module_path.parent, url, "my-token", registry_path)
+    if from_realm:
+        _create_rules_realm(
+            registry_config.rules_realm_path,
+            module_a,
+            "namespace/module-a",
+        )
+    else:
+        _create_module_and_rules(
+            registry_config.scanners_path,
+            module_a,
+            "namespace/module-a",
+        )
+
+    upload_rules_db(module_path.parent, url, "my-token", registry_config)
 
     assert requests_mock.call_count == 1
     assert requests_mock.last_request is not None
@@ -279,7 +311,7 @@ def test_upload_rules_db_with_imports(
 
 
 def test_upload_rules_db_with_default(
-    registry_path: Path, requests_mock: Mocker
+    registry_config: RegistryConfig, requests_mock: Mocker
 ) -> None:
     """Test upload_rules_db with a default rule."""
     url = "https://my_endpoint/"
@@ -299,14 +331,14 @@ def test_upload_rules_db_with_default(
 
     namespace = "namespace-example"
     module_path = _create_module_and_rules(
-        registry_path, VALID_RULES_DB_STRING_WITH_DEFAULT, namespace
+        registry_config.scanners_path, VALID_RULES_DB_STRING_WITH_DEFAULT, namespace
     )
 
     upload_rules_db(
         module_path.parent,
         url,
         test_token,
-        registry_path,
+        registry_config,
     )
 
     assert requests_mock.call_count == 1
@@ -345,7 +377,7 @@ def test_upload_rules_db_with_default(
 
 def test_upload_rules_db_permission_denied(
     capfd: pytest.CaptureFixture[str],
-    registry_path: Path,
+    registry_config: RegistryConfig,
     requests_mock: Mocker,
 ) -> None:
     """Test upload_rules_db."""
@@ -365,11 +397,11 @@ def test_upload_rules_db_permission_denied(
     )
     namespace = "namespace-example"
     module_path = _create_module_and_rules(
-        registry_path, VALID_RULES_DB_STRING, namespace
+        registry_config.scanners_path, VALID_RULES_DB_STRING, namespace
     )
     with pytest.raises(SystemExit):
         upload_rules_db(
-            module_path.parent, "https://my_endpoint/", "my-token", registry_path
+            module_path.parent, "https://my_endpoint/", "my-token", registry_config
         )
     out, _ = capfd.readouterr()
     assert out == "\n".join(
@@ -382,7 +414,9 @@ def test_upload_rules_db_permission_denied(
 
 
 def test_upload_rules_db_error_response(
-    capfd: pytest.CaptureFixture[str], registry_path: Path, requests_mock: Mocker
+    capfd: pytest.CaptureFixture[str],
+    registry_config: RegistryConfig,
+    requests_mock: Mocker,
 ) -> None:
     """Test upload_rules_db."""
     url = "https://my_endpoint/"
@@ -399,11 +433,11 @@ def test_upload_rules_db_error_response(
     )
     namespace = "namespace-example"
     module_path = _create_module_and_rules(
-        registry_path, VALID_RULES_DB_STRING, namespace
+        registry_config.scanners_path, VALID_RULES_DB_STRING, namespace
     )
 
     with pytest.raises(SystemExit):
-        upload_rules_db(module_path.parent, url, "my-token", registry_path)
+        upload_rules_db(module_path.parent, url, "my-token", registry_config)
     out, _ = capfd.readouterr()
     assert out == "\n".join(
         [
@@ -441,7 +475,8 @@ def test_main_success(
     mock_check_call: Any,
     mock_check_output: Any,
     capfd: pytest.CaptureFixture[str],
-    registry_path: Path,
+    scanners_path: Path,
+    rules_realm_path: Path,
     requests_mock: Mocker,
 ) -> None:
     """Test upload_rules_db."""
@@ -455,12 +490,12 @@ def test_main_success(
     namespace = "namespace-example-main"
 
     module_path = _create_module_and_rules(
-        registry_path, VALID_RULES_DB_STRING, namespace
+        scanners_path, VALID_RULES_DB_STRING, namespace
     )
     mock_subprocess_decode = mock_check_output.return_value.decode
     mock_subprocess_decode.return_value.splitlines.return_value = [str(module_path)]
 
-    main(url, "my-token", str(registry_path))
+    main(url, "my-token", str(scanners_path), str(rules_realm_path))
 
     assert requests_mock.call_count == 1
     out, _ = capfd.readouterr()
@@ -473,7 +508,8 @@ def test_main_success_warning(
     mock_check_call: Any,
     mock_check_output: Any,
     capfd: pytest.CaptureFixture[str],
-    registry_path: Path,
+    scanners_path: Path,
+    rules_realm_path: Path,
     requests_mock: Mocker,
 ) -> None:
     """Test upload_rules_db."""
@@ -485,10 +521,10 @@ def test_main_success_warning(
         },
     )
     module1 = _create_module_and_rules(
-        registry_path, VALID_RULES_DB_STRING, "namespace-example-main"
+        scanners_path, VALID_RULES_DB_STRING, "namespace-example-main"
     )
     module2 = _create_module_and_rules(
-        registry_path,
+        scanners_path,
         VALID_RULES_DB_STRING,
         "namespace-example-main2",
         create_rules=False,
@@ -499,7 +535,7 @@ def test_main_success_warning(
         str(module2),
     ]
 
-    main(url, "my-token", str(registry_path))
+    main(url, "my-token", str(scanners_path), str(rules_realm_path))
 
     assert requests_mock.call_count == 1
     out, _ = capfd.readouterr()
@@ -512,13 +548,37 @@ def test_main_no_modules_to_update(
     mock_check_call: Any,
     mock_check_output: Any,
     capfd: pytest.CaptureFixture[str],
-    registry_path: Path,
+    scanners_path: Path,
+    rules_realm_path: Path,
     requests_mock: Mocker,
 ) -> None:
     """Test upload_rules_db."""
     mock_subprocess_decode = mock_check_output.return_value.decode
     mock_subprocess_decode.return_value.splitlines.return_value = []
-    main("https://my_endpoint/", "my-token", str(registry_path))
+    main("https://my_endpoint/", "my-token", str(scanners_path), str(rules_realm_path))
+
+    assert requests_mock.call_count == 0
+    out, _ = capfd.readouterr()
+    assert out == "No module rules to update.\n"
+
+
+@patch("boostsec.registry_validator.upload_rules_db.check_output")
+@patch("boostsec.registry_validator.upload_rules_db.check_call")
+def test_main_only_rules_realm(
+    mock_check_call: Any,
+    mock_check_output: Any,
+    capfd: pytest.CaptureFixture[str],
+    scanners_path: Path,
+    rules_realm_path: Path,
+    requests_mock: Mocker,
+) -> None:
+    """Rules realm should not be uploaded if not imported."""
+    mock_subprocess_decode = mock_check_output.return_value.decode
+    mock_subprocess_decode.return_value.splitlines.return_value = []
+
+    _create_rules_realm(rules_realm_path, VALID_RULES_DB_STRING, "ns/rules")
+
+    main("https://my_endpoint/", "my-token", str(scanners_path), str(rules_realm_path))
 
     assert requests_mock.call_count == 0
     out, _ = capfd.readouterr()

@@ -1,12 +1,13 @@
 """Test."""
 from pathlib import Path, PosixPath
-from uuid import uuid4
 
 import pytest
 import yaml
 from _pytest.monkeypatch import MonkeyPatch
 
+from boostsec.registry_validator.shared import RegistryConfig
 from boostsec.registry_validator.validate_rules_db import (
+    RulesDbPath,
     find_rules_db_yaml,
     load_yaml_file,
     main,
@@ -275,42 +276,44 @@ def _create_module_rules(
     return module
 
 
-def _create_rules_db_yaml(tmp_path: PosixPath, rules_db_string: str) -> None:
-    """Create a module.yaml file."""
-    modules_path = tmp_path / uuid4().hex
-    modules_path.mkdir()
-    module_yaml = modules_path / "rules.yaml"
-    module_yaml.write_text(rules_db_string)
-
-
-def test_find_rules_db_yaml(tmp_path: PosixPath) -> None:
+def test_find_rules_db_yaml(registry_config: RegistryConfig) -> None:
     """Test find_rules_db_yaml."""
-    _create_rules_db_yaml(tmp_path, VALID_RULES_DB_STRING)
-    assert len(find_rules_db_yaml(str(tmp_path))) == 1
+    module = _create_module_rules(
+        registry_config.scanners_path, "namespace1", VALID_RULES_DB_STRING
+    )
+    realm = _create_module_rules(
+        registry_config.rules_realm_path, "namespace2", VALID_RULES_DB_STRING
+    )
+
+    result = find_rules_db_yaml(registry_config)
+    assert result == [
+        RulesDbPath(root=registry_config.scanners_path, path=module / "rules.yaml"),
+        RulesDbPath(root=registry_config.rules_realm_path, path=realm / "rules.yaml"),
+    ]
 
 
-def test_load_yaml_file(tmp_path: PosixPath) -> None:
+def test_load_yaml_file(tmp_path: Path) -> None:
     """Test load_yaml_file."""
     test_yaml = tmp_path / "test.yaml"
     test_yaml.write_text(VALID_RULES_DB_STRING)
-    assert load_yaml_file(str(test_yaml)) == yaml.safe_load(VALID_RULES_DB_STRING)
+    assert load_yaml_file(test_yaml) == yaml.safe_load(VALID_RULES_DB_STRING)
 
 
 def test_load_empty_yaml_file(tmp_path: PosixPath) -> None:
     """Test load_yaml_file with empty file."""
     test_yaml = tmp_path / "test.yaml"
     test_yaml.write_text("")
-    assert load_yaml_file(str(test_yaml)) == {}
+    assert load_yaml_file(test_yaml) == {}
 
 
 def test_load_yaml_file_with_invalid_yaml(
-    tmp_path: PosixPath, capfd: pytest.CaptureFixture[str]
+    tmp_path: Path, capfd: pytest.CaptureFixture[str]
 ) -> None:
     """Test load_yaml_file with invalid yaml."""
     test_yaml = tmp_path / "test.yaml"
     test_yaml.write_text(_INVALID_YAML_FILE)
     with pytest.raises(SystemExit):
-        load_yaml_file(str(test_yaml))
+        load_yaml_file(test_yaml)
     out, _ = capfd.readouterr()
     assert out == "ERROR: Unable to parse Rules DB file\n"
 
@@ -318,7 +321,7 @@ def test_load_yaml_file_with_invalid_yaml(
 def test_load_yaml_without_file(capfd: pytest.CaptureFixture[str]) -> None:
     """Test load_yaml_file without file."""
     with pytest.raises(SystemExit):
-        load_yaml_file("/temp/does_not_exist.yaml")
+        load_yaml_file(Path("/temp/does_not_exist.yaml"))
     out, _ = capfd.readouterr()
     assert out == "ERROR: Rules DB not found: /temp/does_not_exist.yaml\n"
 
@@ -459,13 +462,19 @@ def test_validate_description_length_with_invalid_description(
     assert out == 'ERROR: Rule "test" has a description longer than 512 characters\n'
 
 
+def test_validate_imports_from_realm() -> None:
+    """Should be able to import rules from realm and vise-versa."""
+
+
+@pytest.mark.parametrize("from_realm", [True, False])
 def test_validate_imports_circular_import(
-    registry_path: Path,
     capfd: pytest.CaptureFixture[str],
+    registry_config: RegistryConfig,
+    from_realm: bool,
 ) -> None:
     """Should notify & exit if an import cycle is found."""
     _create_module_rules(
-        registry_path,
+        registry_config.scanners_path,
         "namespace1/module-a",
         """
         import:
@@ -474,7 +483,9 @@ def test_validate_imports_circular_import(
     )
 
     _create_module_rules(
-        registry_path,
+        registry_config.rules_realm_path
+        if from_realm
+        else registry_config.scanners_path,
         "namespace2/module-b",
         """
         import:
@@ -483,18 +494,22 @@ def test_validate_imports_circular_import(
     )
 
     with pytest.raises(SystemExit):
-        validate_imports(["namespace2/module-b"], registry_path)
+        validate_imports(["namespace2/module-b"], registry_config)
     out, _ = capfd.readouterr()
     assert out == "ERROR: Import cycle detected\n"
 
 
+@pytest.mark.parametrize("from_realm", [True, False])
 def test_validate_imports_missing_import(
-    registry_path: Path,
     capfd: pytest.CaptureFixture[str],
+    registry_config: RegistryConfig,
+    from_realm: bool,
 ) -> None:
     """Should notify & exit if an import doesn't exists."""
     _create_module_rules(
-        registry_path,
+        registry_config.rules_realm_path
+        if from_realm
+        else registry_config.scanners_path,
         "namespace/module-a",
         """
         import:
@@ -503,9 +518,9 @@ def test_validate_imports_missing_import(
     )
 
     with pytest.raises(SystemExit):
-        validate_imports(["namespace/module-a"], registry_path)
+        validate_imports(["namespace/module-a"], registry_config)
     out, _ = capfd.readouterr()
-    assert "ERROR: Rules DB not found" in out
+    assert "ERROR: Imported namespace namespace/module-b not found\n" in out
 
 
 @pytest.mark.parametrize(
@@ -520,11 +535,11 @@ def test_validate_imports_missing_import(
 def test_validate_rules_with_valid_rules(
     rules_db_yaml: str,
     capfd: pytest.CaptureFixture[str],
-    registry_path: Path,
+    registry_config: RegistryConfig,
 ) -> None:
     """Test validate_rules with valid rules."""
     _create_module_rules(
-        registry_path,
+        registry_config.scanners_path,
         "namespace/module-a",
         """
         import:
@@ -532,48 +547,82 @@ def test_validate_rules_with_valid_rules(
         """,
     )
     _create_module_rules(
-        registry_path,
+        registry_config.scanners_path,
         "namespace/module-b",
         VALID_RULES_DB_STRING,
     )
-    validate_rules(yaml.safe_load(rules_db_yaml), registry_path)
+    validate_rules(yaml.safe_load(rules_db_yaml), registry_config)
     out, _ = capfd.readouterr()
     assert out == ""
 
 
 def test_main_with_valid_rules(
-    capfd: pytest.CaptureFixture[str], registry_path: Path
+    capfd: pytest.CaptureFixture[str],
+    scanners_path: Path,
+    rules_realm_path: Path,
 ) -> None:
     """Test main with valid rules."""
-    _create_module_rules(registry_path, "namespace/module-name", VALID_RULES_DB_STRING)
-    main(str(registry_path))
+    _create_module_rules(scanners_path, "namespace/module-name", VALID_RULES_DB_STRING)
+    _create_module_rules(
+        rules_realm_path, "namespace/realm-name", VALID_RULES_DB_STRING
+    )
+    main(str(scanners_path), str(rules_realm_path))
     out, _ = capfd.readouterr()
-    assert "Validating namespace/module-name/rules.yaml\n" == out
+    assert (
+        "Validating namespace/module-name/rules.yaml\n"
+        "Validating namespace/realm-name/rules.yaml\n" == out
+    )
 
 
 def test_main_with_valid_imports(
-    capfd: pytest.CaptureFixture[str], registry_path: Path
+    capfd: pytest.CaptureFixture[str],
+    scanners_path: Path,
+    rules_realm_path: Path,
 ) -> None:
     """Test main with valid imported rules."""
     _create_module_rules(
-        registry_path,
+        scanners_path,
         "testing-ns/testing-module",
         VALID_RULES_DB_STRING_WITH_ONLY_IMPORT,
     )
-    _create_module_rules(registry_path, "namespace/module-a", VALID_RULES_DB_STRING)
-    main(str(registry_path))
+    _create_module_rules(scanners_path, "namespace/module-a", VALID_RULES_DB_STRING)
+    main(str(scanners_path), str(rules_realm_path))
     out, _ = capfd.readouterr()
     assert "Validating namespace/module-a/rules.yaml\n" in out
     assert "Validating testing-ns/testing-module/rules.yaml\n" in out
 
 
+def test_main_with_valid_imports_from_realm(
+    capfd: pytest.CaptureFixture[str],
+    scanners_path: Path,
+    rules_realm_path: Path,
+) -> None:
+    """Test main with valid imported rules."""
+    _create_module_rules(
+        scanners_path,
+        "testing-ns/testing-module",
+        VALID_RULES_DB_STRING_WITH_ONLY_IMPORT,
+    )
+    _create_module_rules(rules_realm_path, "namespace/module-a", VALID_RULES_DB_STRING)
+    main(str(scanners_path), str(rules_realm_path))
+    out, _ = capfd.readouterr()
+    assert "Validating namespace/module-a/rules.yaml\n" in out
+    assert "Validating testing-ns/testing-module/rules.yaml\n" in out
+
+
+@pytest.mark.parametrize("from_realm", [True, False])
 def test_main_with_empty_rules_db(
-    capfd: pytest.CaptureFixture[str], registry_path: Path
+    capfd: pytest.CaptureFixture[str],
+    scanners_path: Path,
+    rules_realm_path: Path,
+    from_realm: bool,
 ) -> None:
     """Test main with empty rules db."""
-    _create_module_rules(registry_path, "ns/empty", "")
+    _create_module_rules(
+        rules_realm_path if from_realm else scanners_path, "ns/empty", ""
+    )
     with pytest.raises(SystemExit):
-        main(str(registry_path))
+        main(str(scanners_path), str(rules_realm_path))
     out, _ = capfd.readouterr()
     assert "Validating ns/empty/rules.yaml\nERROR: Rules DB is empty\n" == out
 
@@ -591,16 +640,21 @@ def test_main_with_empty_rules_db(
         ),
     ],
 )
+@pytest.mark.parametrize("from_realm", [True, False])
 def test_main_with_error(
     capfd: pytest.CaptureFixture[str],
-    registry_path: Path,
     rules_db_yaml: str,
+    scanners_path: Path,
+    rules_realm_path: Path,
     expected: str,
+    from_realm: bool,
 ) -> None:
     """Test main with empty rules db."""
-    _create_module_rules(registry_path, "ns/invalid", rules_db_yaml)
+    _create_module_rules(
+        rules_realm_path if from_realm else scanners_path, "ns/invalid", rules_db_yaml
+    )
     with pytest.raises(SystemExit):
-        main(str(registry_path))
+        main(str(scanners_path), str(rules_realm_path))
     out, _ = capfd.readouterr()
     assert f"Validating ns/invalid/rules.yaml\n{expected}\n" == out
 
@@ -609,6 +663,6 @@ def test_main_with_without_rules_db(
     capfd: pytest.CaptureFixture[str], tmp_path: PosixPath
 ) -> None:
     """Test main with empty rules db."""
-    main(str(tmp_path))
+    main(str(tmp_path), str(tmp_path))
     out, _ = capfd.readouterr()
     assert out == "No Rules DB found\n"
