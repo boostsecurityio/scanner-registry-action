@@ -48,6 +48,18 @@ def _create_module_and_rules(
     return module_yaml
 
 
+def _create_rules_realm(
+    registry_path: Path, rules_db_string: str, namespace: str = ""
+) -> Path:
+    """Create a rules-realm."""
+    realm_path = registry_path / namespace
+    realm_path.mkdir(parents=True)
+    rules_yaml = realm_path / "rules.yaml"
+    rules_yaml.write_text(rules_db_string)
+
+    return rules_yaml
+
+
 @pytest.mark.parametrize(
     "namespace",
     [
@@ -210,22 +222,25 @@ def test_upload_rules_db_with_imports(
         "namespace/module-b",
     )
 
-    _create_module_and_rules(
-        registry_config.rules_realm_path
-        if from_realm
-        else registry_config.scanners_path,
-        """
-        import:
-          - namespace/module-a
-        """,
-        "namespace/module-c",
-    )
+    module_c = """
+            import:
+              - namespace/module-a
+            """
 
-    _create_module_and_rules(
-        registry_config.rules_realm_path
-        if from_realm
-        else registry_config.scanners_path,
-        """
+    if from_realm:
+        _create_rules_realm(
+            registry_config.rules_realm_path,
+            module_c,
+            "namespace/module-c",
+        )
+    else:
+        _create_module_and_rules(
+            registry_config.scanners_path,
+            module_c,
+            "namespace/module-c",
+        )
+
+    module_a = """
         rules:
           my-rule-1:
             categories:
@@ -245,9 +260,20 @@ def test_upload_rules_db_with_imports(
             name: my-rule-2
             pretty_name: My rule 2
             ref: "http://my.link.com"
-        """,
-        "namespace/module-a",
-    )
+        """
+
+    if from_realm:
+        _create_rules_realm(
+            registry_config.rules_realm_path,
+            module_a,
+            "namespace/module-a",
+        )
+    else:
+        _create_module_and_rules(
+            registry_config.scanners_path,
+            module_a,
+            "namespace/module-a",
+        )
 
     upload_rules_db(module_path.parent, url, "my-token", registry_config)
 
@@ -529,6 +555,29 @@ def test_main_no_modules_to_update(
     """Test upload_rules_db."""
     mock_subprocess_decode = mock_check_output.return_value.decode
     mock_subprocess_decode.return_value.splitlines.return_value = []
+    main("https://my_endpoint/", "my-token", str(scanners_path), str(rules_realm_path))
+
+    assert requests_mock.call_count == 0
+    out, _ = capfd.readouterr()
+    assert out == "No module rules to update.\n"
+
+
+@patch("boostsec.registry_validator.upload_rules_db.check_output")
+@patch("boostsec.registry_validator.upload_rules_db.check_call")
+def test_main_only_rules_realm(
+    mock_check_call: Any,
+    mock_check_output: Any,
+    capfd: pytest.CaptureFixture[str],
+    scanners_path: Path,
+    rules_realm_path: Path,
+    requests_mock: Mocker,
+) -> None:
+    """Rules realm should not be uploaded if not imported."""
+    mock_subprocess_decode = mock_check_output.return_value.decode
+    mock_subprocess_decode.return_value.splitlines.return_value = []
+
+    _create_rules_realm(rules_realm_path, VALID_RULES_DB_STRING, "ns/rules")
+
     main("https://my_endpoint/", "my-token", str(scanners_path), str(rules_realm_path))
 
     assert requests_mock.call_count == 0
