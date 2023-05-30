@@ -51,6 +51,37 @@ def find_module_yaml(modules_path: str) -> list[Path]:
     return modules_list
 
 
+def find_rules_realm_namespace(rules_realm_path: Path) -> list[str]:
+    """Find rules realm with rules.yaml file."""
+    return [
+        str(rule.parent.relative_to(rules_realm_path))
+        for rule in rules_realm_path.rglob("rules.yaml")
+    ]
+
+
+def get_module_namespaces(modules_list: list[Path]) -> list[str]:
+    """Return the namespaces for each modules."""
+    namespaces = []
+    for module in modules_list:
+        if namespace := yaml.safe_load(module.read_text()).get("namespace"):
+            namespaces.append(namespace)
+        else:
+            module_relative_path = "/".join(str(module).split("/")[-4:])
+            _log_error_and_exit(f'namespace not found in "{module_relative_path}"')
+
+    return namespaces
+
+
+def validate_unique_namepsace(namespaces: list[str]) -> None:
+    """Validate that each namespaces is unique."""
+    unique_namespace = set()
+    for namespace in namespaces:
+        if namespace in unique_namespace:
+            _log_error_and_exit(f"namespaces are not unique, duplicate: {namespace}")
+        else:
+            unique_namespace.add(namespace)
+
+
 def validate_module_yaml_schema(module: Path) -> None:
     """Validate the module.yaml schema."""
     module_yaml = yaml.safe_load(module.read_text())
@@ -60,29 +91,20 @@ def validate_module_yaml_schema(module: Path) -> None:
         _log_error_and_exit(f'{error.message} in "{module}"')
 
 
-def validate_namespaces_from_modules_yaml(modules_list: list[Path]) -> None:
-    """Get namespaces from module.yaml files."""
-    namespaces = {}
-    for module in modules_list:
-        if namespace := yaml.safe_load(module.read_text()).get("namespace"):
-            if namespace in namespaces:
-                _log_error_and_exit(
-                    f"namespaces are not unique, duplicate: {namespace}"
-                )
-            else:
-                namespaces[namespace] = module
-        else:
-            module_relative_path = "/".join(str(module).split("/")[-4:])
-            _log_error_and_exit(f'namespace not found in "{module_relative_path}"')
+def validate_namespaces(modules_list: list[Path], rule_namespaces: list[str]) -> None:
+    """Validate the namespaces are unique between modules & rules realm."""
+    module_namespaces = get_module_namespaces(modules_list)
+    validate_unique_namepsace(module_namespaces + rule_namespaces)
 
 
-def main(modules_path: str) -> None:
+def main(modules_path: str, rules_realm_path: str) -> None:
     """Validate that namespaces are unique."""
     print("Validating namespaces...")
     modules_list = find_module_yaml(modules_path)
+    rule_namespaces = find_rules_realm_namespace(Path(rules_realm_path))
     for module in modules_list:
         validate_module_yaml_schema(module)
-    validate_namespaces_from_modules_yaml(modules_list)
+    validate_namespaces(modules_list, rule_namespaces)
     print("Namespaces are unique.")
 
 
@@ -92,6 +114,11 @@ if __name__ == "__main__":  # pragma: no cover
         "-m",
         "--modules-path",
         help="The location of the rule database.",
+    )
+    parser.add_argument(
+        "-r",
+        "--rules-realm-path",
+        help="The location of the rules realm.",
     )
     args = parser.parse_args()
     main(**vars(args))
