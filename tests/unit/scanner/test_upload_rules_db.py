@@ -91,6 +91,7 @@ def test_upload_rules_db(
         "variables": {
             "rules": {
                 "namespace": namespace,
+                "defaultRule": None,
                 "ruleInputs": [
                     {
                         "categories": ["ALL", "category-1"],
@@ -144,6 +145,7 @@ def test_upload_rules_db_with_placeholder(
         "variables": {
             "rules": {
                 "namespace": "namespace-example",
+                "defaultRule": None,
                 "ruleInputs": [
                     {
                         "categories": ["ALL", "category-1"],
@@ -250,6 +252,7 @@ def test_upload_rules_db_with_imports(
         "variables": {
             "rules": {
                 "namespace": "namespace/module-b",
+                "defaultRule": None,
                 "ruleInputs": [
                     {
                         "categories": ["ALL", "category-1"],
@@ -308,11 +311,13 @@ def test_upload_rules_db_with_default(
 
     assert requests_mock.call_count == 1
     assert requests_mock.last_request is not None
-    assert requests_mock.last_request.json() == {
+    req_json = requests_mock.last_request.json()
+    assert req_json == {
         "query": "mutation setRules($rules: RuleInputSchemas!) {\n  setRules(namespacedRules: $rules) {\n    __typename\n    ... on RuleSuccessSchema {\n      successMessage\n    }\n    ... on RuleErrorSchema {\n      errorMessage\n    }\n  }\n}",  # noqa: E501
         "variables": {
             "rules": {
                 "namespace": "namespace-example",
+                "defaultRule": "my-rule-2",
                 "ruleInputs": [
                     {
                         "categories": ["ALL", "category-1"],
@@ -328,7 +333,7 @@ def test_upload_rules_db_with_default(
                         "description": "Lorem Ipsum",
                         "driver": "Example Scanner",
                         "group": "Test group 2",
-                        "name": "default",
+                        "name": "my-rule-2",
                         "prettyName": "My rule 2",
                         "ref": "http://my.link.com",
                     },
