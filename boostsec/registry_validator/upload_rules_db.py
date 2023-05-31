@@ -217,9 +217,14 @@ if __name__ == "__main__":  # pragma: no cover
         required=True,
     )
     parser.add_argument(
+        "-s",
+        "--scanners-path",
+        help="The path of scanners.",
+    )
+    parser.add_argument(
         "-r",
-        "--rules-db-path",
-        help="The path of the rule database.",
+        "--rules-realm-path",
+        help="The path of rules realm.",
     )
     args = parser.parse_args()
     main(**vars(args))
