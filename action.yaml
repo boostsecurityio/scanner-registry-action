@@ -52,7 +52,7 @@ runs:
     - name: Validate namespaces
       run: |
         poetry run python -m boostsec.registry_validator.validate_namespaces \
-          --modules-path ${{ inputs.modules_path }}
+          --modules-path ${{ inputs.modules_path }} --rules-realm-path ${{ inputs.rules_realm_path }}
       shell: bash
       env:
         PYTHONPATH: ${{ github.action_path }}
