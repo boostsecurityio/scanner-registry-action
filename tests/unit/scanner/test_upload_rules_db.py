@@ -21,6 +21,7 @@ from tests.unit.scanner.test_validate_rules_db import (
     VALID_RULES_DB_STRING,
     VALID_RULES_DB_STRING_WITH_DEFAULT,
     VALID_RULES_DB_STRING_WITH_IMPORTS,
+    VALID_RULES_DB_STRING_WITH_ONLY_IMPORT,
     VALID_RULES_DB_STRING_WITH_PLACEHOLDER,
 )
 
@@ -386,6 +387,169 @@ def test_upload_rules_db_with_default(
                         "group": "Test group 2",
                         "name": "my-rule-2",
                         "prettyName": "My rule 2",
+                        "ref": "http://my.link.com",
+                    },
+                ],
+            }
+        },
+    }
+
+
+def test_upload_rules_db_with_imported_default(
+    registry_config: RegistryConfig, requests_mock: Mocker
+) -> None:
+    """Should include any imported default rule."""
+    url = "https://my_endpoint/"
+    test_token = "my-random-key"  # noqa: S105
+
+    def has_auth_token(request: Any) -> bool:
+        assert request.headers["Authorization"] == f"ApiKey {test_token}"
+        return True
+
+    requests_mock.post(
+        urljoin(url, "/rules-management/graphql"),
+        additional_matcher=has_auth_token,
+        json={
+            "data": {"setRules": {"__typename": "RuleSuccessSchema"}},
+        },
+    )
+
+    _create_rules_realm(
+        registry_config.rules_realm_path,
+        VALID_RULES_DB_STRING_WITH_DEFAULT,
+        "namespace/module-a",
+    )
+
+    namespace = "namespace-example"
+    module_path = _create_module_and_rules(
+        registry_config.scanners_path, VALID_RULES_DB_STRING_WITH_ONLY_IMPORT, namespace
+    )
+
+    upload_rules_db(
+        module_path.parent,
+        url,
+        test_token,
+        registry_config,
+    )
+
+    assert requests_mock.call_count == 1
+    assert requests_mock.last_request is not None
+    req_json = requests_mock.last_request.json()
+    assert req_json == {
+        "query": "mutation setRules($rules: RuleInputSchemas!) {\n  setRules(namespacedRules: $rules) {\n    __typename\n    ... on RuleSuccessSchema {\n      successMessage\n    }\n    ... on RuleErrorSchema {\n      errorMessage\n    }\n  }\n}",  # noqa: E501
+        "variables": {
+            "rules": {
+                "namespace": "namespace-example",
+                "defaultRule": "my-rule-2",
+                "ruleInputs": [
+                    {
+                        "categories": ["ALL", "category-1"],
+                        "description": "Lorem Ipsum",
+                        "driver": "Example Scanner",
+                        "group": "Test group 1",
+                        "name": "my-rule-1",
+                        "prettyName": "My rule 1",
+                        "ref": "http://my.link.com",
+                    },
+                    {
+                        "categories": ["ALL", "category-2"],
+                        "description": "Lorem Ipsum",
+                        "driver": "Example Scanner",
+                        "group": "Test group 2",
+                        "name": "my-rule-2",
+                        "prettyName": "My rule 2",
+                        "ref": "http://my.link.com",
+                    },
+                ],
+            }
+        },
+    }
+
+
+def test_upload_rules_db_imported_default_precedence(
+    registry_config: RegistryConfig, requests_mock: Mocker
+) -> None:
+    """Module default should take precedence over any imported one."""
+    url = "https://my_endpoint/"
+    test_token = "my-random-key"  # noqa: S105
+
+    def has_auth_token(request: Any) -> bool:
+        assert request.headers["Authorization"] == f"ApiKey {test_token}"
+        return True
+
+    requests_mock.post(
+        urljoin(url, "/rules-management/graphql"),
+        additional_matcher=has_auth_token,
+        json={
+            "data": {"setRules": {"__typename": "RuleSuccessSchema"}},
+        },
+    )
+
+    _create_rules_realm(
+        registry_config.rules_realm_path,
+        VALID_RULES_DB_STRING_WITH_DEFAULT,
+        "namespace/module-a",
+    )
+
+    namespace = "namespace-example"
+    rules = VALID_RULES_DB_STRING_WITH_ONLY_IMPORT
+    rules += """
+default:
+  my-default:
+    categories:
+      - ALL
+    description: Lorem Ipsum
+    group: Test default
+    name: my-default
+    pretty_name: My Default
+    ref: "http://my.link.com"
+    """
+    module_path = _create_module_and_rules(
+        registry_config.scanners_path, rules, namespace
+    )
+
+    upload_rules_db(
+        module_path.parent,
+        url,
+        test_token,
+        registry_config,
+    )
+
+    assert requests_mock.call_count == 1
+    assert requests_mock.last_request is not None
+    req_json = requests_mock.last_request.json()
+    assert req_json == {
+        "query": "mutation setRules($rules: RuleInputSchemas!) {\n  setRules(namespacedRules: $rules) {\n    __typename\n    ... on RuleSuccessSchema {\n      successMessage\n    }\n    ... on RuleErrorSchema {\n      errorMessage\n    }\n  }\n}",  # noqa: E501
+        "variables": {
+            "rules": {
+                "namespace": "namespace-example",
+                "defaultRule": "my-default",
+                "ruleInputs": [
+                    {
+                        "categories": ["ALL", "category-1"],
+                        "description": "Lorem Ipsum",
+                        "driver": "Example Scanner",
+                        "group": "Test group 1",
+                        "name": "my-rule-1",
+                        "prettyName": "My rule 1",
+                        "ref": "http://my.link.com",
+                    },
+                    {
+                        "categories": ["ALL", "category-2"],
+                        "description": "Lorem Ipsum",
+                        "driver": "Example Scanner",
+                        "group": "Test group 2",
+                        "name": "my-rule-2",
+                        "prettyName": "My rule 2",
+                        "ref": "http://my.link.com",
+                    },
+                    {
+                        "categories": ["ALL"],
+                        "description": "Lorem Ipsum",
+                        "driver": "Example Scanner",
+                        "group": "Test default",
+                        "name": "my-default",
+                        "prettyName": "My Default",
                         "ref": "http://my.link.com",
                     },
                 ],
