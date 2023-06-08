@@ -136,8 +136,9 @@ def _get_rules_and_default(
     default_rule = None
     if imports := rules_db_yaml.get("import"):
         for ns in imports:
-            import_rules, _ = _get_rules_and_default(ns, config)
+            import_rules, imported_default = _get_rules_and_default(ns, config)
             rules.update(import_rules)
+            default_rule = imported_default or default_rule
 
     if module_rules := rules_db_yaml.get("rules"):
         rules.update(module_rules)
