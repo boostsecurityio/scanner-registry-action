@@ -1,7 +1,8 @@
 """Test."""
 from pathlib import Path
+from subprocess import check_call  # noqa: S404
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from urllib.parse import urljoin
 
 import pytest
@@ -11,6 +12,7 @@ from requests_mock import Mocker
 
 from boostsec.registry_validator.shared import RegistryConfig
 from boostsec.registry_validator.upload_rules_db import (
+    find_updated_scanners,
     main,
     render_doc_url,
     upload_rules_db,
@@ -18,6 +20,7 @@ from boostsec.registry_validator.upload_rules_db import (
 from tests.unit.scanner.test_validate_rules_db import (
     VALID_RULES_DB_STRING,
     VALID_RULES_DB_STRING_WITH_DEFAULT,
+    VALID_RULES_DB_STRING_WITH_IMPORTS,
     VALID_RULES_DB_STRING_WITH_PLACEHOLDER,
 )
 
@@ -58,6 +61,22 @@ def _create_rules_realm(
     rules_yaml.write_text(rules_db_string)
 
     return rules_yaml
+
+
+def _init_repo(git_root: Path) -> None:
+    """Initialize an empty git repo."""
+    check_call(["git", "init"], cwd=git_root)  # noqa: S603 S607 noboost
+    check_call(  # noqa: S603 S607 noboost
+        ["git", "commit", "--allow-empty", "-m", "first commit"], cwd=git_root
+    )
+
+
+def _commit_all_changes(git_root: Path, message: str = "commit") -> None:
+    """Commit all changes in the git_root repo."""
+    check_call(["git", "add", "-A"], cwd=git_root)  # noqa: S603 S607 noboost
+    check_call(  # noqa: S603 S607 noboost
+        ["git", "commit", "-am", message], cwd=git_root
+    )
 
 
 @pytest.mark.parametrize(
@@ -469,10 +488,80 @@ def test_render_doc_url_no_placeholder() -> None:
     assert render_doc_url(test_url) == test_url
 
 
+def test_find_updated_scanners(registry_path: Path, scanners_path: Path) -> None:
+    """Should return the list of updated modules since the last commit.
+
+    Any modules updated prior should not be included.
+    """
+    _init_repo(registry_path)
+    ignored_module = scanners_path / "ignore"
+    ignored_module.mkdir(parents=True)
+    (ignored_module / "module.yaml").touch()
+    (ignored_module / "rules.yaml").touch()
+    _commit_all_changes(registry_path)
+
+    modules = [scanners_path / "a", scanners_path / "b"]
+    for module in modules:
+        module.mkdir(parents=True)
+        (module / "module.yaml").touch()
+        (module / "rules.yaml").touch()
+
+    _commit_all_changes(registry_path)
+    assert find_updated_scanners(scanners_path, git_root=registry_path) == modules
+
+
+def test_find_updated_scanners_only_rules(
+    registry_path: Path, scanners_path: Path
+) -> None:
+    """Should return the updated module even if only rules.yaml was updated."""
+    _init_repo(registry_path)
+    module = scanners_path / "ns/test"
+    module.mkdir(parents=True)
+    (module / "module.yaml").touch()
+    rules = module / "rules.yaml"
+    rules.touch()
+    _commit_all_changes(registry_path)
+
+    rules.write_text("some changes")
+    _commit_all_changes(registry_path)
+
+    assert find_updated_scanners(scanners_path, git_root=registry_path) == [module]
+
+
+def test_find_updated_scanners_no_rules(
+    registry_path: Path, scanners_path: Path
+) -> None:
+    """Should ignore module without rules db."""
+    _init_repo(registry_path)
+    module = scanners_path / "ns/test"
+    module.mkdir(parents=True)
+    (module / "module.yaml").touch()
+    _commit_all_changes(registry_path)
+
+    assert find_updated_scanners(scanners_path, git_root=registry_path) == []
+
+
+def test_find_updated_scanners_ignore_rules_realm(
+    registry_path: Path, scanners_path: Path, rules_realm_path: Path
+) -> None:
+    """Should only return module under the scanners path."""
+    _init_repo(registry_path)
+    rules = rules_realm_path / "ns/test"
+    rules.mkdir(parents=True)
+    (rules / "rules.yaml").touch()
+
+    module = scanners_path / "ns/test"
+    module.mkdir(parents=True)
+    (module / "module.yaml").touch()
+    (module / "rules.yaml").touch()
+    _commit_all_changes(registry_path)
+
+    assert find_updated_scanners(scanners_path, git_root=registry_path) == [module]
+
+
 @patch("boostsec.registry_validator.upload_rules_db.check_output")
-@patch("boostsec.registry_validator.upload_rules_db.check_call")
+@patch("boostsec.registry_validator.upload_rules_db.check_call", Mock())
 def test_main_success(
-    mock_check_call: Any,
     mock_check_output: Any,
     capfd: pytest.CaptureFixture[str],
     scanners_path: Path,
@@ -503,9 +592,8 @@ def test_main_success(
 
 
 @patch("boostsec.registry_validator.upload_rules_db.check_output")
-@patch("boostsec.registry_validator.upload_rules_db.check_call")
+@patch("boostsec.registry_validator.upload_rules_db.check_call", Mock())
 def test_main_success_warning(
-    mock_check_call: Any,
     mock_check_output: Any,
     capfd: pytest.CaptureFixture[str],
     scanners_path: Path,
@@ -543,9 +631,8 @@ def test_main_success_warning(
 
 
 @patch("boostsec.registry_validator.upload_rules_db.check_output")
-@patch("boostsec.registry_validator.upload_rules_db.check_call")
+@patch("boostsec.registry_validator.upload_rules_db.check_call", Mock())
 def test_main_no_modules_to_update(
-    mock_check_call: Any,
     mock_check_output: Any,
     capfd: pytest.CaptureFixture[str],
     scanners_path: Path,
@@ -563,9 +650,8 @@ def test_main_no_modules_to_update(
 
 
 @patch("boostsec.registry_validator.upload_rules_db.check_output")
-@patch("boostsec.registry_validator.upload_rules_db.check_call")
+@patch("boostsec.registry_validator.upload_rules_db.check_call", Mock())
 def test_main_only_rules_realm(
-    mock_check_call: Any,
     mock_check_output: Any,
     capfd: pytest.CaptureFixture[str],
     scanners_path: Path,
@@ -573,13 +659,49 @@ def test_main_only_rules_realm(
     requests_mock: Mocker,
 ) -> None:
     """Rules realm should not be uploaded if not imported."""
+    _create_rules_realm(rules_realm_path, VALID_RULES_DB_STRING, "ns/rules")
+
     mock_subprocess_decode = mock_check_output.return_value.decode
     mock_subprocess_decode.return_value.splitlines.return_value = []
-
-    _create_rules_realm(rules_realm_path, VALID_RULES_DB_STRING, "ns/rules")
 
     main("https://my_endpoint/", "my-token", str(scanners_path), str(rules_realm_path))
 
     assert requests_mock.call_count == 0
     out, _ = capfd.readouterr()
     assert out == "No module rules to update.\n"
+
+
+@patch("boostsec.registry_validator.upload_rules_db.check_output")
+@patch("boostsec.registry_validator.upload_rules_db.check_call", Mock())
+def test_main_only_rules_realm_with_module(
+    mock_check_output: Any,
+    capfd: pytest.CaptureFixture[str],
+    scanners_path: Path,
+    rules_realm_path: Path,
+    requests_mock: Mocker,
+) -> None:
+    """Rules realm should not be picked up, but the real module should."""
+    url = "https://my_endpoint/"
+    requests_mock.post(
+        urljoin(url, "/rules-management/graphql"),
+        json={
+            "data": {"setRules": {"__typename": "RuleSuccessSchema"}},
+        },
+    )
+
+    _create_rules_realm(rules_realm_path, VALID_RULES_DB_STRING, "namespace/module-a")
+
+    module = _create_module_and_rules(
+        scanners_path, VALID_RULES_DB_STRING_WITH_IMPORTS, "ns/test"
+    )
+
+    mock_subprocess_decode = mock_check_output.return_value.decode
+    mock_subprocess_decode.return_value.splitlines.return_value = [
+        str(module),
+    ]
+
+    main("https://my_endpoint/", "my-token", str(scanners_path), str(rules_realm_path))
+
+    assert requests_mock.call_count == 1
+    out, _ = capfd.readouterr()
+    assert out == 'Uploading rules "ns/test" "Example Scanner"...\n'

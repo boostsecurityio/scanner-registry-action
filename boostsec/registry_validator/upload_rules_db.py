@@ -48,10 +48,12 @@ def render_doc_url(unrendered_url: str) -> str:
         return unrendered_url
 
 
-def find_modules() -> list[Path]:
+def find_updated_scanners(
+    scanners_path: Path, git_root: Optional[Path] = None
+) -> list[Path]:
     """Find module.yaml files."""
     fetch_command = ["git", "fetch", "--deepen=1", "--quiet"]
-    check_call(fetch_command)  # noqa: S603 noboost
+    check_call(fetch_command, cwd=git_root)  # noqa: S603 noboost
     diff_command = [
         "git",
         "--no-pager",
@@ -61,13 +63,15 @@ def find_modules() -> list[Path]:
         "--diff-filter",
         "AM",
         "HEAD~1",
+        "--",
+        str(scanners_path),
     ]
-    diff_output = check_output(diff_command)  # noqa: S603 noboost
+    diff_output = check_output(diff_command, cwd=git_root)  # noqa: S603 noboost
     diff_output_list = diff_output.decode("utf-8").splitlines()
 
     modules_dic = {}
     for path in [i for i in diff_output_list if i.endswith("yaml")]:
-        module_path = Path(path).parent
+        module_path = (git_root or Path(".")) / Path(path).parent
         modules_dic[str(module_path)] = module_path
     return [i for i in modules_dic.values() if has_rules_yaml(i)]
 
@@ -194,7 +198,7 @@ def main(
     config = RegistryConfig(
         scanners_path=Path(scanners_path), rules_realm_path=Path(rules_realm_path)
     )
-    modules = find_modules()
+    modules = find_updated_scanners(config.scanners_path)
     if len(modules) == 0:
         print("No module rules to update.")
     else:
