@@ -1,5 +1,4 @@
 """Uploads the Rules DB file."""
-import argparse
 import os
 import sys
 from pathlib import Path
@@ -7,10 +6,17 @@ from subprocess import check_call, check_output  # noqa: S404
 from typing import Any, Optional
 from urllib.parse import urljoin
 
+import typer
 import yaml
 from gql import Client, gql
 from gql.transport.requests import RequestsHTTPTransport
 
+from boostsec.registry_validator.parameters import (
+    ApiEndpoint,
+    ApiToken,
+    RulesRealmPath,
+    ScannersPath,
+)
 from boostsec.registry_validator.shared import RegistryConfig
 
 RulesDB = dict[str, dict[str, str]]
@@ -29,6 +35,8 @@ mutation setRules($rules: RuleInputSchemas!) {
     }
 }"""
 )
+
+app = typer.Typer()
 
 
 def _log_error_and_exit(message: str) -> None:
@@ -191,10 +199,14 @@ def upload_rules_db(
         )
 
 
+@app.command()
 def main(
-    api_endpoint: str, api_token: str, scanners_path: str, rules_realm_path: str
+    api_endpoint: str = ApiEndpoint,
+    api_token: str = ApiToken,
+    scanners_path: str = ScannersPath,
+    rules_realm_path: str = RulesRealmPath,
 ) -> None:
-    """Validate the Rules DB file."""
+    """Process a rule database."""
     config = RegistryConfig(
         scanners_path=Path(scanners_path), rules_realm_path=Path(rules_realm_path)
     )
@@ -207,28 +219,4 @@ def main(
 
 
 if __name__ == "__main__":  # pragma: no cover
-    parser = argparse.ArgumentParser(description="Process a rule database.")
-    parser.add_argument(
-        "-e",
-        "--api-endpoint",
-        help="The API endpoint to validate against.",
-        required=True,
-    )
-    parser.add_argument(
-        "-t",
-        "--api-token",
-        help="The GitHub token to use for authentication.",
-        required=True,
-    )
-    parser.add_argument(
-        "-s",
-        "--scanners-path",
-        help="The path of scanners.",
-    )
-    parser.add_argument(
-        "-r",
-        "--rules-realm-path",
-        help="The path of rules realm.",
-    )
-    args = parser.parse_args()
-    main(**vars(args))
+    app()

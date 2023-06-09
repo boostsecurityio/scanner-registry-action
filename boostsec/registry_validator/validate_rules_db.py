@@ -1,14 +1,15 @@
 """Validates the Rules DB file."""
-import argparse
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict
 
+import typer
 import yaml
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 
+from boostsec.registry_validator.parameters import RulesRealmPath, ScannersPath
 from boostsec.registry_validator.shared import RegistryConfig
 from boostsec.registry_validator.upload_rules_db import render_doc_url
 
@@ -63,6 +64,9 @@ class RulesDbPath:
 
     root: Path
     path: Path
+
+
+app = typer.Typer()
 
 
 def _log_error_and_exit(message: str) -> None:
@@ -199,7 +203,11 @@ def validate_rules(rules_db: Dict[str, Any], config: RegistryConfig) -> None:
         validate_imports(imports, config)
 
 
-def main(scanners_path: str, rules_realm_path: str) -> None:
+@app.command()
+def main(
+    scanners_path: str = ScannersPath,
+    rules_realm_path: str = RulesRealmPath,
+) -> None:
     """Validate the Rules DB file."""
     config = RegistryConfig(
         scanners_path=Path(scanners_path), rules_realm_path=Path(rules_realm_path)
@@ -218,16 +226,4 @@ def main(scanners_path: str, rules_realm_path: str) -> None:
 
 
 if __name__ == "__main__":  # pragma: no cover
-    parser = argparse.ArgumentParser(description="Process a rule database.")
-    parser.add_argument(
-        "-s",
-        "--scanners-path",
-        help="The path of scanners.",
-    )
-    parser.add_argument(
-        "-r",
-        "--rules-realm-path",
-        help="The path of rules realm.",
-    )
-    args = parser.parse_args()
-    main(**vars(args))
+    app()
