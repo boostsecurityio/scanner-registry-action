@@ -37,7 +37,9 @@ def rules_realm_path(registry_path: Path) -> Path:
 @pytest.fixture()
 def registry_config(scanners_path: Path, rules_realm_path: Path) -> RegistryConfig:
     """Return a RegistryConfig from valid temporary paths."""
-    return RegistryConfig(scanners_path, rules_realm_path)
+    return RegistryConfig(
+        scanners_path=scanners_path, rules_realm_path=rules_realm_path
+    )
 
 
 @pytest.fixture()

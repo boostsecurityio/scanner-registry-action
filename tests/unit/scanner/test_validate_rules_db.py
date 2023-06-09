@@ -7,6 +7,7 @@ from _pytest.monkeypatch import MonkeyPatch
 from typer.testing import CliRunner
 
 from boostsec.registry_validator.shared import RegistryConfig
+from boostsec.registry_validator.testing.factories import RuleModelFactory
 from boostsec.registry_validator.validate_rules_db import (
     RulesDbPath,
     app,
@@ -330,19 +331,19 @@ def test_load_yaml_without_file(capfd: pytest.CaptureFixture[str]) -> None:
 def test_validate_ref_url_with_invalid_url(capfd: pytest.CaptureFixture[str]) -> None:
     """Test validate_ref_url with invalid url."""
     with pytest.raises(SystemExit):
-        validate_ref_url({"name": "test", "ref": "invalid_url"})
+        validate_ref_url(RuleModelFactory.build(name="test", ref="invalid_url"))
     out, _ = capfd.readouterr()
     assert out == 'ERROR: Url missing protocol: "invalid_url" from rule "test"\n'
 
 
 def test_validate_ref_url_with_valid_url_with_https() -> None:
     """Test validate_ref_url with valid url."""
-    validate_ref_url({"name": "test", "ref": "https://example.com"})
+    validate_ref_url(RuleModelFactory.build(ref="https://example.com"))
 
 
 def test_validate_ref_url_with_valid_url_with_http() -> None:
     """Test validate_ref_url with valid url."""
-    validate_ref_url({"name": "test", "ref": "http://example.com"})
+    validate_ref_url(RuleModelFactory.build(ref="http://example.com"))
 
 
 def test_validate_ref_url_with_valid_url_with_placeholder(
@@ -351,7 +352,7 @@ def test_validate_ref_url_with_valid_url_with_placeholder(
     """Test validate_ref_url with valid url."""
     env_var_name = "BOOSTSEC_DOC_BASE_URL"
     monkeypatch.setenv(env_var_name, "http://test.com")
-    validate_ref_url({"name": "test", "ref": f"{{{env_var_name}}}/a/b/c"})
+    validate_ref_url(RuleModelFactory.build(ref=f"{{{env_var_name}}}/a/b/c"))
 
 
 @pytest.mark.parametrize(
@@ -418,7 +419,7 @@ def test_validate_rules_db_with_invalid_rules_db(
 
 def test_validate_rule_name_with_valid_name() -> None:
     """Test validate_rule_name with valid name."""
-    validate_rule_name("test", {"name": "test"})
+    validate_rule_name("test", RuleModelFactory.build(name="test"))
 
 
 def test_validate_rule_name_with_invalid_name(
@@ -426,14 +427,14 @@ def test_validate_rule_name_with_invalid_name(
 ) -> None:
     """Test validate_rule_name with invalid name."""
     with pytest.raises(SystemExit):
-        validate_rule_name("test", {"name": "invalid"})
+        validate_rule_name("test", RuleModelFactory.build(name="invalid"))
     out, _ = capfd.readouterr()
     assert out == 'ERROR: Rule name "test" does not match "invalid"\n'
 
 
 def test_validate_all_in_category_with_valid_category() -> None:
     """Test validate_all_in_category with valid category."""
-    validate_all_in_category({"name": "test", "categories": ["ALL"]})
+    validate_all_in_category(RuleModelFactory.build(categories=["ALL"]))
 
 
 def test_validate_all_in_category_with_invalid_category(
@@ -441,14 +442,16 @@ def test_validate_all_in_category_with_invalid_category(
 ) -> None:
     """Test validate_all_in_category with invalid category."""
     with pytest.raises(SystemExit):
-        validate_all_in_category({"name": "test", "categories": ["invalid"]})
+        validate_all_in_category(
+            RuleModelFactory.build(name="test", categories=["invalid"])
+        )
     out, _ = capfd.readouterr()
     assert out == 'ERROR: Rule "test" is missing category "ALL"\n'
 
 
 def test_validate_description_length_with_valid_description() -> None:
     """Test validate_description_length with valid description."""
-    validate_description_length({"name": "test", "description": "Lorem Ipsum " * 42})
+    validate_description_length(RuleModelFactory.build(description="Lorem Ipsum " * 42))
 
 
 def test_validate_description_length_with_invalid_description(
@@ -457,7 +460,7 @@ def test_validate_description_length_with_invalid_description(
     """Test validate_description_length with invalid description."""
     with pytest.raises(SystemExit):
         validate_description_length(
-            {"name": "test", "description": "Lorem Ipsum " * 43}
+            RuleModelFactory.build(name="test", description="Lorem Ipsum " * 43)
         )
     out, _ = capfd.readouterr()
     assert out == 'ERROR: Rule "test" has a description longer than 512 characters\n'

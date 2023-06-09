@@ -1,10 +1,33 @@
 """Shared components between validation & uploads."""
-from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
+
+from pydantic import BaseModel, Field
 
 
-@dataclass
-class RegistryConfig:
+class RuleModel(BaseModel):
+    """Representation of a scanner rule."""
+
+    categories: list[str]
+    description: str
+    group: str
+    name: str
+    pretty_name: str
+    ref: str
+
+
+Rules = dict[str, RuleModel]
+
+
+class RulesDbModel(BaseModel):
+    """Representation of a rules db file content."""
+
+    imports: Optional[list[str]] = Field(None, alias="import")
+    rules: Optional[Rules]
+    default: Optional[Rules] = None
+
+
+class RegistryConfig(BaseModel):
     """Config class for the registry.
 
     Holds reference to the scanners and rules realm location.
