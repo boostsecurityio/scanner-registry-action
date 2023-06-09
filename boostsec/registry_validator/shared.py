@@ -24,7 +24,7 @@ class RulesDbModel(BaseModel):
 
     imports: Optional[list[str]] = Field(None, alias="import")
     rules: Optional[Rules]
-    default: Optional[Rules] = None
+    default: Optional[Rules]
 
 
 class RegistryConfig(BaseModel):
