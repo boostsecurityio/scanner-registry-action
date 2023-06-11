@@ -1,65 +1,17 @@
 """Validates the Rules DB file."""
 import sys
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Sequence
+from typing import Any, Dict, Sequence, cast
 
 import typer
 import yaml
-from jsonschema import validate
-from jsonschema.exceptions import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from boostsec.registry_validator.parameters import RulesRealmPath, ScannersPath
-from boostsec.registry_validator.shared import RegistryConfig, RuleModel, RulesDbModel
-from boostsec.registry_validator.upload_rules_db import render_doc_url
-
-RULES_SCHEMA = """
-type: object
-additionalProperties: false
-properties:
-  import:
-    type: array
-    items:
-      - type: string
-  rules:
-    type: object
-    additionalProperties:
-      $ref: "#$defs/rule"
-  default:
-    type: object
-    additionalProperties:
-      $ref: "#$defs/rule"
-$defs:
-  rule:
-    type: object
-    additionalProperties: false
-    properties:
-      categories:
-        type: array
-        items:
-          - type: string
-      description:
-        type: string
-      group:
-        type: string
-      name:
-        type: string
-      pretty_name:
-        type: string
-      ref:
-        type: string
-    required:
-      - categories
-      - description
-      - group
-      - name
-      - pretty_name
-      - ref
-"""
+from boostsec.registry_validator.shared import RegistryConfig, RulesDbModel
 
 
-@dataclass
-class RulesDbPath:
+class RulesDbPath(BaseModel):
     """Path to a RulesDB with the root path."""
 
     root: Path
@@ -103,41 +55,32 @@ def load_yaml_file(file_path: Path) -> Any:
     return {}
 
 
-def validate_ref_url(rule: RuleModel) -> None:
-    """Validate ref url is valid."""
-    url = render_doc_url(rule.ref)
-    if not url.startswith("http") and not url.startswith("https"):
-        _log_error_and_exit(f'Url missing protocol: "{url}" from rule "{rule.name}"')
+def _format_validation_error(e: dict[str, Any]) -> str:
+    error_type = e["type"]
+    loc = ".".join(str(loc) for loc in e["loc"])
+    if error_type == "value_error.missing":
+        return f"{loc} is a required property"
+    elif error_type == "value_error.extra":
+        return f"Additional properties are not allowed ({loc} was unexpected)"
+    else:
+        msg = e.get("msg", "unknown error")
+        return f"{loc}: {msg}"
 
 
 def validate_rules_db(rules_db: Dict[str, Any]) -> RulesDbModel:
     """Validate rule is valid."""
     try:
-        validate(rules_db, yaml.safe_load(RULES_SCHEMA))
+        rule = RulesDbModel.parse_obj(rules_db)
     except ValidationError as e:
-        _log_error_and_exit(f'Rules db is invalid: "{e.message}"')
-
-    return RulesDbModel.parse_obj(rules_db)
-
-
-def validate_rule_name(name: str, rule: RuleModel) -> None:
-    """Validate rule name is equal to rule id."""
-    if name != rule.name:
-        _log_error_and_exit(f'Rule name "{name}" does not match "{rule.name}"')
-
-
-def validate_all_in_category(rule: RuleModel) -> None:
-    """Validate category ALL is included in the categories."""
-    if "ALL" not in rule.categories:
-        _log_error_and_exit(f'Rule "{rule.name}" is missing category "ALL"')
-
-
-def validate_description_length(rule: RuleModel) -> None:
-    """Validate rule description length is less than 512 characters."""
-    if len(rule.description) > 512:
         _log_error_and_exit(
-            f'Rule "{rule.name}" has a description longer than 512 characters'
+            "Rules db is invalid: "
+            + "\t\n".join(
+                _format_validation_error(cast(dict[str, Any], err))
+                for err in e.errors()
+            )
         )
+
+    return rule
 
 
 def validate_imports(imports: Sequence[str], config: RegistryConfig) -> None:
@@ -180,26 +123,9 @@ def _validate_imports(
     visited_stack.discard(namespace)
 
 
-def _validate_rule(rule_name: str, rule: RuleModel) -> None:
-    """Validate a single rule."""
-    validate_rule_name(rule_name, rule)
-    validate_ref_url(rule)
-    validate_all_in_category(rule)
-    validate_description_length(rule)
-
-
 def validate_rules(raw_rules_db: Dict[str, Any], config: RegistryConfig) -> None:
     """Validate rules from rules_db."""
     rules_db = validate_rules_db(raw_rules_db)
-    if rules := rules_db.rules:
-        for rule_name, rule in rules.items():
-            _validate_rule(rule_name, rule)
-    if default := rules_db.default:
-        default_items = list(default.items())
-        if len(default_items) > 1:
-            _log_error_and_exit("Only one default rule is allowed")
-        default_name, default_rule = default_items[0]
-        _validate_rule(default_name, default_rule)
     if imports := rules_db.imports:
         validate_imports(imports, config)
 

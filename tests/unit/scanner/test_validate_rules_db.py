@@ -3,21 +3,15 @@ from pathlib import Path, PosixPath
 
 import pytest
 import yaml
-from _pytest.monkeypatch import MonkeyPatch
 from typer.testing import CliRunner
 
 from boostsec.registry_validator.shared import RegistryConfig
-from boostsec.registry_validator.testing.factories import RuleModelFactory
 from boostsec.registry_validator.validate_rules_db import (
     RulesDbPath,
     app,
     find_rules_db_yaml,
     load_yaml_file,
-    validate_all_in_category,
-    validate_description_length,
     validate_imports,
-    validate_ref_url,
-    validate_rule_name,
     validate_rules,
     validate_rules_db,
 )
@@ -148,18 +142,6 @@ rules:
     ref: "http://my.link.com"
 """
 
-_INVALID_RULES_DB_STRING_MISSING_DRIVER = """
-rules:
-  my-rule-1:
-    categories:
-      - ALL
-      - category-1
-    description: Lorem Ipsum
-    group: Test group 1
-    name: my-rule-1
-    pretty_name: My rule 1
-    ref: "http://my.link.com"
-"""
 
 _INVALID_RULES_DB_STRING_MISSING_GROUP = """
 rules:
@@ -219,6 +201,7 @@ rules:
     group: Test group 1
     name: my-rule-1
     pretty_name: My rule 1
+    ref: "http://my.link.com"
 default:
   my-rule-2:
     categories:
@@ -228,7 +211,6 @@ default:
     group: Test group 2
     name: my-rule-2
     pretty_name: My rule 2
-    ref: "http://my.link.com"
 """
 
 _INVALID_DEFAULT_MULTIPLE_RULES_DB_STRING = """
@@ -328,33 +310,6 @@ def test_load_yaml_without_file(capfd: pytest.CaptureFixture[str]) -> None:
     assert out == "ERROR: Rules DB not found: /temp/does_not_exist.yaml\n"
 
 
-def test_validate_ref_url_with_invalid_url(capfd: pytest.CaptureFixture[str]) -> None:
-    """Test validate_ref_url with invalid url."""
-    with pytest.raises(SystemExit):
-        validate_ref_url(RuleModelFactory.build(name="test", ref="invalid_url"))
-    out, _ = capfd.readouterr()
-    assert out == 'ERROR: Url missing protocol: "invalid_url" from rule "test"\n'
-
-
-def test_validate_ref_url_with_valid_url_with_https() -> None:
-    """Test validate_ref_url with valid url."""
-    validate_ref_url(RuleModelFactory.build(ref="https://example.com"))
-
-
-def test_validate_ref_url_with_valid_url_with_http() -> None:
-    """Test validate_ref_url with valid url."""
-    validate_ref_url(RuleModelFactory.build(ref="http://example.com"))
-
-
-def test_validate_ref_url_with_valid_url_with_placeholder(
-    monkeypatch: MonkeyPatch,
-) -> None:
-    """Test validate_ref_url with valid url."""
-    env_var_name = "BOOSTSEC_DOC_BASE_URL"
-    monkeypatch.setenv(env_var_name, "http://test.com")
-    validate_ref_url(RuleModelFactory.build(ref=f"{{{env_var_name}}}/a/b/c"))
-
-
 @pytest.mark.parametrize(
     "rules_db_yaml",
     [
@@ -374,36 +329,36 @@ def test_validate_rules_db_with_valid_rules_db(rules_db_yaml: str) -> None:
     [
         (
             _INVALID_RULES_DB_STRING_MISSING_CATEGORIES,
-            "ERROR: Rules db is invalid: \"'categories' is a required property\"\n",
+            "rules.my-rule-1.categories is a required property\n",
         ),
         (
             _INVALID_RULES_DB_STRING_MISSING_DESCRIPTION,
-            "ERROR: Rules db is invalid: \"'description' is a required property\"\n",
+            "rules.my-rule-1.description is a required property\n",
         ),
         (
             _INVALID_RULES_DB_STRING_MISSING_GROUP,
-            "ERROR: Rules db is invalid: \"'group' is a required property\"\n",
+            "rules.my-rule-1.group is a required property\n",
         ),
         (
             _INVALID_RULES_DB_STRING_MISSING_NAME,
-            "ERROR: Rules db is invalid: \"'name' is a required property\"\n",
+            "rules.my-rule-1.name is a required property\n",
         ),
         (
             _INVALID_RULES_DB_STRING_MISSING_PRETTY_NAME,
-            "ERROR: Rules db is invalid: \"'pretty_name' is a required property\"\n",
+            "rules.my-rule-1.pretty_name is a required property\n",
         ),
         (
             _INVALID_RULES_DB_STRING_MISSING_REF,
-            "ERROR: Rules db is invalid: \"'ref' is a required property\"\n",
+            "rules.my-rule-1.ref is a required property\n",
         ),
         (
             _INVALID_RULES_DB_STRING_EXTRA_PROPERTY,
-            'ERROR: Rules db is invalid: "Additional properties are not allowed '
-            "('extra_property' was unexpected)\"\n",
+            "Additional properties are not allowed "
+            "(rules.my-rule-1.extra_property was unexpected)\n",
         ),
         (
             _INVALID_DEFAULT_RULES_DB_STRING,
-            "ERROR: Rules db is invalid: \"'ref' is a required property\"\n",
+            "default.my-rule-2.ref is a required property\n",
         ),
     ],
 )
@@ -414,60 +369,7 @@ def test_validate_rules_db_with_invalid_rules_db(
     with pytest.raises(SystemExit):
         validate_rules_db(yaml.safe_load(rule_str))
     out, _ = capfd.readouterr()
-    assert out == expected
-
-
-def test_validate_rule_name_with_valid_name() -> None:
-    """Test validate_rule_name with valid name."""
-    validate_rule_name("test", RuleModelFactory.build(name="test"))
-
-
-def test_validate_rule_name_with_invalid_name(
-    capfd: pytest.CaptureFixture[str],
-) -> None:
-    """Test validate_rule_name with invalid name."""
-    with pytest.raises(SystemExit):
-        validate_rule_name("test", RuleModelFactory.build(name="invalid"))
-    out, _ = capfd.readouterr()
-    assert out == 'ERROR: Rule name "test" does not match "invalid"\n'
-
-
-def test_validate_all_in_category_with_valid_category() -> None:
-    """Test validate_all_in_category with valid category."""
-    validate_all_in_category(RuleModelFactory.build(categories=["ALL"]))
-
-
-def test_validate_all_in_category_with_invalid_category(
-    capfd: pytest.CaptureFixture[str],
-) -> None:
-    """Test validate_all_in_category with invalid category."""
-    with pytest.raises(SystemExit):
-        validate_all_in_category(
-            RuleModelFactory.build(name="test", categories=["invalid"])
-        )
-    out, _ = capfd.readouterr()
-    assert out == 'ERROR: Rule "test" is missing category "ALL"\n'
-
-
-def test_validate_description_length_with_valid_description() -> None:
-    """Test validate_description_length with valid description."""
-    validate_description_length(RuleModelFactory.build(description="Lorem Ipsum " * 42))
-
-
-def test_validate_description_length_with_invalid_description(
-    capfd: pytest.CaptureFixture[str],
-) -> None:
-    """Test validate_description_length with invalid description."""
-    with pytest.raises(SystemExit):
-        validate_description_length(
-            RuleModelFactory.build(name="test", description="Lorem Ipsum " * 43)
-        )
-    out, _ = capfd.readouterr()
-    assert out == 'ERROR: Rule "test" has a description longer than 512 characters\n'
-
-
-def test_validate_imports_from_realm() -> None:
-    """Should be able to import rules from realm and vise-versa."""
+    assert out == "ERROR: Rules db is invalid: " + expected
 
 
 @pytest.mark.parametrize("from_realm", [True, False])
@@ -664,11 +566,12 @@ def test_main_with_empty_rules_db(
     [
         (
             _INVALID_RULES_DB_STRING_MISSING_CATEGORIES,
-            "ERROR: Rules db is invalid: \"'categories' is a required property\"",
+            "ERROR: Rules db is invalid: "
+            "rules.my-rule-1.categories is a required property",
         ),
         (
             _INVALID_DEFAULT_MULTIPLE_RULES_DB_STRING,
-            "ERROR: Only one default rule is allowed",
+            "ERROR: Rules db is invalid: default: Only one default rule is allowed",
         ),
     ],
 )
