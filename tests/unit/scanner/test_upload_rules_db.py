@@ -707,8 +707,8 @@ def test_find_updated_scanners_ignore_rules_realm(
 def test_main_success(
     mock_check_output: Any,
     cli_runner: CliRunner,
+    registry_path: Path,
     scanners_path: Path,
-    rules_realm_path: Path,
     requests_mock: Mocker,
 ) -> None:
     """Test upload_rules_db."""
@@ -734,10 +734,8 @@ def test_main_success(
             "https://my_endpoint/",
             "--api-token",
             "my-token",
-            "--scanners-path",
-            str(scanners_path),
-            "--rules-realm-path",
-            str(rules_realm_path),
+            "--registry-path",
+            str(registry_path),
         ],
     )
 
@@ -753,8 +751,8 @@ def test_main_success(
 def test_main_success_warning(
     mock_check_output: Any,
     cli_runner: CliRunner,
+    registry_path: Path,
     scanners_path: Path,
-    rules_realm_path: Path,
     requests_mock: Mocker,
 ) -> None:
     """Test upload_rules_db."""
@@ -787,10 +785,8 @@ def test_main_success_warning(
             "https://my_endpoint/",
             "--api-token",
             "my-token",
-            "--scanners-path",
-            str(scanners_path),
-            "--rules-realm-path",
-            str(rules_realm_path),
+            "--registry-path",
+            str(registry_path),
         ],
     )
 
@@ -803,8 +799,7 @@ def test_main_success_warning(
 def test_main_no_modules_to_update(
     mock_check_output: Any,
     cli_runner: CliRunner,
-    scanners_path: Path,
-    rules_realm_path: Path,
+    registry_path: Path,
     requests_mock: Mocker,
 ) -> None:
     """Test upload_rules_db."""
@@ -818,10 +813,8 @@ def test_main_no_modules_to_update(
             "https://my_endpoint/",
             "--api-token",
             "my-token",
-            "--scanners-path",
-            str(scanners_path),
-            "--rules-realm-path",
-            str(rules_realm_path),
+            "--registry-path",
+            str(registry_path),
         ],
     )
 
@@ -834,7 +827,7 @@ def test_main_no_modules_to_update(
 def test_main_only_rules_realm(
     mock_check_output: Any,
     cli_runner: CliRunner,
-    scanners_path: Path,
+    registry_path: Path,
     rules_realm_path: Path,
     requests_mock: Mocker,
 ) -> None:
@@ -851,10 +844,8 @@ def test_main_only_rules_realm(
             "https://my_endpoint/",
             "--api-token",
             "my-token",
-            "--scanners-path",
-            str(scanners_path),
-            "--rules-realm-path",
-            str(rules_realm_path),
+            "--registry-path",
+            str(registry_path),
         ],
     )
 
@@ -867,6 +858,7 @@ def test_main_only_rules_realm(
 def test_main_only_rules_realm_with_module(
     mock_check_output: Any,
     cli_runner: CliRunner,
+    registry_path: Path,
     scanners_path: Path,
     rules_realm_path: Path,
     requests_mock: Mocker,
@@ -898,10 +890,8 @@ def test_main_only_rules_realm_with_module(
             "https://my_endpoint/",
             "--api-token",
             "my-token",
-            "--scanners-path",
-            str(scanners_path),
-            "--rules-realm-path",
-            str(rules_realm_path),
+            "--registry-path",
+            str(registry_path),
         ],
     )
 

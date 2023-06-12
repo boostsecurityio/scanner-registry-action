@@ -10,12 +10,7 @@ import yaml
 from gql import Client, gql
 from gql.transport.requests import RequestsHTTPTransport
 
-from boostsec.registry_validator.parameters import (
-    ApiEndpoint,
-    ApiToken,
-    RulesRealmPath,
-    ScannersPath,
-)
+from boostsec.registry_validator.parameters import ApiEndpoint, ApiToken, RegistryPath
 from boostsec.registry_validator.shared import RegistryConfig, Rules, RulesDbModel
 
 MUTATION = gql(
@@ -191,13 +186,10 @@ def upload_rules_db(
 def main(
     api_endpoint: str = ApiEndpoint,
     api_token: str = ApiToken,
-    scanners_path: str = ScannersPath,
-    rules_realm_path: str = RulesRealmPath,
+    registry_path: Path = RegistryPath,
 ) -> None:
     """Process a rule database."""
-    config = RegistryConfig(
-        scanners_path=Path(scanners_path), rules_realm_path=Path(rules_realm_path)
-    )
+    config = RegistryConfig.from_registry(registry_path)
     modules = find_updated_scanners(config.scanners_path)
     if len(modules) == 0:
         print("No module rules to update.")

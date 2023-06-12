@@ -7,7 +7,8 @@ import yaml
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 
-from boostsec.registry_validator.parameters import ModulesPath, RulesRealmPath
+from boostsec.registry_validator.parameters import RegistryPath
+from boostsec.registry_validator.shared import RegistryConfig
 
 MODULE_SCHEMA = """
 type: object
@@ -47,10 +48,10 @@ def _log_error_and_exit(message: str) -> None:
     sys.exit(1)
 
 
-def find_module_yaml(modules_path: str) -> list[Path]:
+def find_module_yaml(modules_path: Path) -> list[Path]:
     """Find module.yaml files."""
     modules_list = []
-    for path in Path(modules_path).rglob("module.yaml"):
+    for path in modules_path.rglob("module.yaml"):
         modules_list.append(path)
     return modules_list
 
@@ -103,13 +104,13 @@ def validate_namespaces(modules_list: list[Path], rule_namespaces: list[str]) ->
 
 @app.command()
 def main(
-    modules_path: str = ModulesPath,
-    rules_realm_path: str = RulesRealmPath,
+    registry_path: Path = RegistryPath,
 ) -> None:
     """Validate that namespaces are unique."""
+    config = RegistryConfig.from_registry(registry_path)
     print("Validating namespaces...")
-    modules_list = find_module_yaml(modules_path)
-    rule_namespaces = find_rules_realm_namespace(Path(rules_realm_path))
+    modules_list = find_module_yaml(config.scanners_path)
+    rule_namespaces = find_rules_realm_namespace(config.rules_realm_path)
     for module in modules_list:
         validate_module_yaml_schema(module)
     validate_namespaces(modules_list, rule_namespaces)

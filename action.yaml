@@ -8,14 +8,10 @@ inputs:
   api_token:
     description: "Boost API token"
     required: true
-  modules_path:
-    description: "Path to the modules directory"
+  registry_path:
+    description: "Registry base path."
     required: false
-    default: "scanners/"
-  rules_realm_path:
-    description: "Path to the rules realm directory"
-    required: false
-    default: "rules-realm/"
+    default: "."
   docs_url:
     description: "URL to the documentation"
     required: false
@@ -44,7 +40,7 @@ runs:
       if: steps.changes.outputs.rules == 'true'
       run: |
         poetry run python -m boostsec.registry_validator.validate_rules_db \
-          --scanners-path ${{ inputs.modules_path }} --rules-realm-path ${{ inputs.rules_realm_path }}
+          --registry-path ${{ inputs.registry_path }}
       shell: bash
       env:
         PYTHONPATH: ${{ github.action_path }}
@@ -52,7 +48,7 @@ runs:
     - name: Validate namespaces
       run: |
         poetry run python -m boostsec.registry_validator.validate_namespaces \
-          --modules-path ${{ inputs.modules_path }} --rules-realm-path ${{ inputs.rules_realm_path }}
+          --registry-path ${{ inputs.registry_path }}
       shell: bash
       env:
         PYTHONPATH: ${{ github.action_path }}
@@ -61,7 +57,7 @@ runs:
       run: |
         poetry run python -m boostsec.registry_validator.upload_rules_db \
           --api-endpoint ${{ inputs.api_endpoint }} --api-token ${{ inputs.api_token }} \
-          --scanners-path ${{ inputs.modules_path }} --rules-realm-path ${{ inputs.rules_realm_path }}
+          --registry-path ${{ inputs.registry_path }}
       shell: bash
       env:
         PYTHONPATH: ${{ github.action_path }}
