@@ -16,12 +16,7 @@ from boostsec.registry_validator.parameters import (
     RulesRealmPath,
     ScannersPath,
 )
-from boostsec.registry_validator.shared import (
-    RegistryConfig,
-    Rules,
-    RulesDbModel,
-    render_doc_url,
-)
+from boostsec.registry_validator.shared import RegistryConfig, Rules, RulesDbModel
 
 MUTATION = gql(
     """
@@ -99,7 +94,7 @@ def _get_variables(
                     "group": rule.group,
                     "name": rule.name,
                     "prettyName": rule.pretty_name,
-                    "ref": render_doc_url(rule.ref),
+                    "ref": rule.ref,
                 }
                 for rule in rules.values()
             ],

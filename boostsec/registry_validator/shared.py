@@ -3,18 +3,7 @@ import os
 from pathlib import Path
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, validator
-
-
-def render_doc_url(unrendered_url: str) -> str:
-    """Render doc url."""
-    var_name = "BOOSTSEC_DOC_BASE_URL"
-    placeholder = f"{{{var_name}}}"
-    if placeholder in unrendered_url:
-        doc_base_url = os.environ[var_name]
-        return unrendered_url.replace(placeholder, doc_base_url)
-    else:
-        return unrendered_url
+from pydantic import AnyHttpUrl, BaseModel, Field, validator
 
 
 class RuleModel(BaseModel):
@@ -25,7 +14,7 @@ class RuleModel(BaseModel):
     description: str
     group: str
     categories: list[str]
-    ref: str
+    ref: AnyHttpUrl
 
     class Config:
         """Config."""
@@ -51,15 +40,10 @@ class RuleModel(BaseModel):
             )
         return description
 
-    @validator("ref")
-    def validate_ref_url(cls, ref: str, values: Any) -> str:
+    @validator("ref", pre=True)
+    def validate_ref_url(cls, ref: str) -> str:
         """Validate ref url is valid."""
-        url = render_doc_url(ref)
-        if not url.startswith("http") and not url.startswith("https"):
-            name = values["name"]
-            raise ValueError(f'Url missing protocol: "{url}" from rule "{name}"')
-
-        return url
+        return _render_doc_url(ref)
 
 
 Rules = dict[str, RuleModel]
@@ -109,3 +93,14 @@ class RegistryConfig(BaseModel):
 
     scanners_path: Path
     rules_realm_path: Path
+
+
+def _render_doc_url(unrendered_url: str) -> str:
+    """Render doc url."""
+    var_name = "BOOSTSEC_DOC_BASE_URL"
+    placeholder = f"{{{var_name}}}"
+    if placeholder in unrendered_url:
+        doc_base_url = os.environ[var_name]
+        return unrendered_url.replace(placeholder, doc_base_url)
+    else:
+        return unrendered_url
