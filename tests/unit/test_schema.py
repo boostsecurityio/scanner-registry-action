@@ -1,23 +1,21 @@
-"""Tests for shared module."""
-from pathlib import Path
+"""Test for scanners & rules schemas."""
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from pydantic import ValidationError
 
-from boostsec.registry_validator.shared import RegistryConfig
 from boostsec.registry_validator.testing.factories import (
-    RuleDbModelFactory,
-    RuleModelFactory,
+    RuleSchemaFactory,
+    RulesDbSchemaFactory,
 )
 
 
 def test_validate_rule_name_with_valid_name() -> None:
     """Test that each rule name matches its id."""
-    RuleDbModelFactory.build(
+    RulesDbSchemaFactory.build(
         rules={
-            "rule-1": RuleModelFactory.build(name="rule-1"),
-            "rule-2": RuleModelFactory.build(name="rule-2"),
+            "rule-1": RuleSchemaFactory.build(name="rule-1"),
+            "rule-2": RuleSchemaFactory.build(name="rule-2"),
         }
     )
 
@@ -25,21 +23,23 @@ def test_validate_rule_name_with_valid_name() -> None:
 def test_validate_rule_name_with_invalid_name() -> None:
     """Should raise if rule name doesn't match its id."""
     with pytest.raises(ValidationError, match='Rule name .* does not match ".*"'):
-        RuleDbModelFactory.build(rules={"test": RuleModelFactory.build(name="invalid")})
+        RulesDbSchemaFactory.build(
+            rules={"test": RuleSchemaFactory.build(name="invalid")}
+        )
 
 
 def test_validate_rule_name_with_no_rules() -> None:
     """Test rules db with no rules."""
-    RuleDbModelFactory.build()
+    RulesDbSchemaFactory.build()
 
 
 def test_validate_multiple_defaults() -> None:
     """Should raises if multiple default rule."""
     with pytest.raises(ValidationError, match="Only one default rule is allowed"):
-        RuleDbModelFactory.build(
+        RulesDbSchemaFactory.build(
             default={
-                "rule-1": RuleModelFactory.build(name="rule-1"),
-                "rule-2": RuleModelFactory.build(name="rule-2"),
+                "rule-1": RuleSchemaFactory.build(name="rule-1"),
+                "rule-2": RuleSchemaFactory.build(name="rule-2"),
             }
         )
 
@@ -49,27 +49,27 @@ def test_validate_default_invalid_name() -> None:
     with pytest.raises(
         ValidationError, match='Default rule name ".*" does not match ".*"'
     ):
-        RuleDbModelFactory.build(
+        RulesDbSchemaFactory.build(
             default={
-                "rule-1": RuleModelFactory.build(),
+                "rule-1": RuleSchemaFactory.build(),
             }
         )
 
 
 def test_validate_all_in_category_with_valid_category() -> None:
     """Test rule with valid category."""
-    RuleModelFactory.build(categories=["ALL"])
+    RuleSchemaFactory.build(categories=["ALL"])
 
 
 def test_validate_all_in_category_with_invalid_category() -> None:
     """Should raises if ALL is missing in categories."""
     with pytest.raises(ValidationError, match='Rule .* is missing category "ALL"'):
-        RuleModelFactory.build(categories=["invalid"])
+        RuleSchemaFactory.build(categories=["invalid"])
 
 
 def test_validate_description_length_with_valid_description() -> None:
     """Test rule with valid description."""
-    RuleModelFactory.build(description="Lorem Ipsum " * 42)
+    RuleSchemaFactory.build(description="Lorem Ipsum " * 42)
 
 
 def test_validate_description_length_with_invalid_description() -> None:
@@ -78,20 +78,20 @@ def test_validate_description_length_with_invalid_description() -> None:
         ValidationError,
         match="Rule .* has a description longer than 512 characters",
     ):
-        RuleModelFactory.build(description="Lorem Ipsum " * 43)
+        RuleSchemaFactory.build(description="Lorem Ipsum " * 43)
 
 
 @pytest.mark.parametrize("url", ["https://example.com", "http://example.com"])
 def test_validate_ref_url_with_valid_url(url: str) -> None:
     """Test rule with valid url."""
-    rule = RuleModelFactory.build(ref=url)
+    rule = RuleSchemaFactory.build(ref=url)
     assert url == rule.ref
 
 
 def test_validate_ref_url_with_invalid_url() -> None:
     """Should raises if ref is not a valid url."""
     with pytest.raises(ValidationError):
-        RuleModelFactory.build(ref="invalid_url")
+        RuleSchemaFactory.build(ref="invalid_url")
 
 
 def test_validate_ref_url_with_valid_url_with_placeholder(
@@ -100,7 +100,7 @@ def test_validate_ref_url_with_valid_url_with_placeholder(
     """Test rule ref with env var injection."""
     env_var_name = "BOOSTSEC_DOC_BASE_URL"
     monkeypatch.setenv(env_var_name, "http://test.com")
-    rule = RuleModelFactory.build(ref=f"{{{env_var_name}}}/a/b/c")
+    rule = RuleSchemaFactory.build(ref=f"{{{env_var_name}}}/a/b/c")
     assert rule.ref == "http://test.com/a/b/c"
 
 
@@ -108,11 +108,4 @@ def test_render_doc_url_error_empty_env_var() -> None:
     """Test render_doc_url."""
     env_var_name = "BOOSTSEC_DOC_BASE_URL"
     with pytest.raises(KeyError):
-        RuleModelFactory.build(ref=f"{{{env_var_name}}}/a/path")
-
-
-def test_registry_config_from_path(tmp_path: Path) -> None:
-    """Should init config from a registry base path."""
-    config = RegistryConfig.from_registry(tmp_path)
-    assert config.scanners_path == tmp_path / "scanners"
-    assert config.rules_realm_path == tmp_path / "rules-realm"
+        RuleSchemaFactory.build(ref=f"{{{env_var_name}}}/a/path")

@@ -7,8 +7,8 @@ import yaml
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 
+from boostsec.registry_validator.config import RegistryConfig
 from boostsec.registry_validator.parameters import RegistryPath
-from boostsec.registry_validator.shared import RegistryConfig
 
 MODULE_SCHEMA = """
 type: object

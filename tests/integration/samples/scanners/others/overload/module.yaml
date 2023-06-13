@@ -1,0 +1,10 @@
+api_version: 1.0
+
+id: overload
+name: Overload
+namespace: others/overload
+
+config:
+  support_diff_scan: true
+  require_full_repo: false
+

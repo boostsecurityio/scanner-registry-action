@@ -1,0 +1,10 @@
+api_version: 1.0
+
+id: with-placeholder
+name: With Placeholder
+namespace: others/with-placeholder
+
+config:
+  support_diff_scan: true
+  require_full_repo: false
+

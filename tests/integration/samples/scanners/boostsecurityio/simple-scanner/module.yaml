@@ -1,0 +1,10 @@
+api_version: 1.0
+
+id: simple-scanner
+name: Simple Scanner
+namespace: boostsecurityio/simple-scanner
+
+config:
+  support_diff_scan: true
+  require_full_repo: false
+

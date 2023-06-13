@@ -1,0 +1,22 @@
+import:
+  - boostsecurityio/mitre-cwe
+
+rules:
+  CWE-1004:
+    categories:
+    - ALL
+    description: Overload
+    group: top10-security-misconfiguration
+    name: CWE-1004
+    pretty_name: 'CWE-1004: Overload'
+    ref: https://cwe.mitre.org/data/definitions/1004.html
+  
+default:
+  CWE-OVERLOAD:
+    categories:
+      - ALL
+    group: top10-insecure-design
+    name: CWE-OVERLOAD
+    pretty_name: CWE-OVERLOAD - Overload
+    description: Overload
+    ref: https://cwe.mitre.org/

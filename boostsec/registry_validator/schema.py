@@ -1,12 +1,11 @@
-"""Shared components between validation & uploads."""
+"""Scanners & rules definition schemas."""
 import os
-from pathlib import Path
 from typing import Any, Optional
 
 from pydantic import AnyHttpUrl, BaseModel, Field, validator
 
 
-class RuleModel(BaseModel):
+class RuleSchema(BaseModel):
     """Representation of a scanner rule."""
 
     name: str
@@ -46,18 +45,25 @@ class RuleModel(BaseModel):
         return _render_doc_url(ref)
 
 
-Rules = dict[str, RuleModel]
+RulesSchema = dict[str, RuleSchema]
 
 
-class RulesDbModel(BaseModel):
+class RulesDbSchema(BaseModel):
     """Representation of a rules db file content."""
 
     imports: Optional[list[str]] = Field(None, alias="import")
-    rules: Optional[Rules]
-    default: Optional[Rules]
+    rules: Optional[RulesSchema]
+    default: Optional[RulesSchema]
+
+    class Config:
+        """Config."""
+
+        allow_population_by_field_name = True
 
     @validator("rules")
-    def validate_rules_names(cls, rules: Optional[Rules]) -> Optional[Rules]:
+    def validate_rules_names(
+        cls, rules: Optional[RulesSchema]
+    ) -> Optional[RulesSchema]:
         """Validate rule name is equal to rule id."""
         if not rules:
             return None
@@ -69,7 +75,9 @@ class RulesDbModel(BaseModel):
         return rules
 
     @validator("default")
-    def validation_default(cls, default: Optional[Rules]) -> Optional[Rules]:
+    def validation_default(
+        cls, default: Optional[RulesSchema]
+    ) -> Optional[RulesSchema]:
         """Validate default rule."""
         if not default:
             return None
@@ -83,24 +91,6 @@ class RulesDbModel(BaseModel):
             raise ValueError(f'Default rule name "{name}" does not match "{rule.name}"')
 
         return default
-
-
-class RegistryConfig(BaseModel):
-    """Config class for the registry.
-
-    Holds reference to the scanners and rules realm location.
-    """
-
-    scanners_path: Path
-    rules_realm_path: Path
-
-    @classmethod
-    def from_registry(cls, registry_path: Path) -> "RegistryConfig":
-        """Initialize a RegistryConfig from the base registry path."""
-        return cls(
-            scanners_path=registry_path / "scanners",
-            rules_realm_path=registry_path / "rules-realm",
-        )
 
 
 def _render_doc_url(unrendered_url: str) -> str:

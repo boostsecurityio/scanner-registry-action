@@ -1,0 +1,19 @@
+rules:
+  my-rule-1:
+    categories:
+      - ALL
+      - category-1
+    description: Lorem Ipsum
+    group: Test group 1
+    name: my-rule-1
+    pretty_name: My rule 1
+    ref: "{BOOSTSEC_DOC_BASE_URL}/a/b/c"
+  my-rule-2:
+    categories:
+      - ALL
+      - category-2
+    description: Lorem Ipsum
+    group: Test group 2
+    name: my-rule-2
+    pretty_name: My rule 2
+    ref: "{BOOSTSEC_DOC_BASE_URL}/d/e/f"
