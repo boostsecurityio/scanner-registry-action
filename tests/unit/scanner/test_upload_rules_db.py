@@ -1,7 +1,7 @@
 """Test."""
 from pathlib import Path
 from subprocess import check_call  # noqa: S404
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import urljoin
 
 import pytest
@@ -18,6 +18,7 @@ from boostsec.registry_validator.testing.factories import (
 )
 from boostsec.registry_validator.upload_rules_db import (  # find_updated_scanners,
     find_updated_namespaces,
+    get_updated_scanners,
     load_rules_realm,
     load_scanners,
     make_namespace_cache,
@@ -84,24 +85,19 @@ def _commit_all_changes(git_root: Path, message: str = "commit") -> None:
     )
 
 
-@pytest.mark.parametrize(
-    ("namespace", "expected"),
-    [
-        ("namespace-example", "namespace-example"),
-        ("default", "boostsecurityio/native-scanner"),
-    ],
-)
-def test_get_scanners_rules(scanners_path: Path, namespace: str, expected: str) -> None:
+def test_load_scanners(scanners_path: Path) -> None:
     """Should load all and convert every scanners.
 
     For backward compatibility, any namespace named default should be renamed
     to boostsecurityio/native-scanner.
     """
+    namespace = "multi/level/path/namespace-example"
+    imports = ["imported/ns"]
     rules = {
         "my-rule-1": RuleSchemaFactory.build(name="my-rule-1"),
         "my-rule-2": RuleSchemaFactory.build(name="my-rule-2"),
     }
-    rules_db = RulesDbSchemaFactory.build(rules=rules, imports=["imported/ns"])
+    rules_db = RulesDbSchemaFactory.build(rules=rules, imports=imports)
 
     _create_module_and_rules(
         scanners_path,
@@ -109,14 +105,40 @@ def test_get_scanners_rules(scanners_path: Path, namespace: str, expected: str) 
         namespace,
     )
 
-    result = load_scanners(scanners_path, {expected})
+    result = load_scanners(scanners_path, {namespace})
     assert result == [
         ScannerNamespace(
-            namespace=expected,
+            namespace=namespace,
             driver="Example Scanner",
             rules=rules,
-            imports=["imported/ns"],
+            imports=imports,
             updated=True,
+        ),
+    ]
+
+
+def test_load_scanners_default_values(scanners_path: Path) -> None:
+    """Should use default values for rules, imports and updated.
+
+    For backward compatibility, any namespace named default should be renamed
+    to boostsecurityio/native-scanner.
+    """
+    rules_db = RulesDbSchemaFactory.build()
+
+    _create_module_and_rules(
+        scanners_path,
+        yaml.safe_dump(rules_db.dict()),
+        "default",
+    )
+
+    result = load_scanners(scanners_path, set())
+    assert result == [
+        ScannerNamespace(
+            namespace="boostsecurityio/native-scanner",
+            driver="Example Scanner",
+            rules={},
+            imports=[],
+            updated=False,
         ),
     ]
 
@@ -137,6 +159,19 @@ def test_load_rules_realm(rules_realm_path: Path) -> None:
         RuleRealmNamespace(
             namespace=ns, rules=rules, imports=["imported/ns"], updated=True
         )
+    ]
+
+
+def test_load_rules_realm_default_values(rules_realm_path: Path) -> None:
+    """Should load all and convert every rules-realm."""
+    ns = "deep/path/rules"
+    rules_db = RulesDbSchemaFactory.build()
+
+    _create_rules_realm(rules_realm_path, yaml.safe_dump(rules_db.dict()), ns)
+
+    result = load_rules_realm(rules_realm_path, set())
+    assert result == [
+        RuleRealmNamespace(namespace=ns, rules={}, imports=[], updated=False)
     ]
 
 
@@ -191,6 +226,38 @@ def test_rollup() -> None:
     assert n3_res.rules == rules_2 | rules_1
     assert n3_res.default == default
     assert n3_res.updated
+
+
+def test_get_updated_scanners() -> None:
+    """Test that only updated scanners are returned.
+
+    All their rules, default & update status should have been merge with their imports.
+    """
+    rules_1 = {
+        "r1": RuleSchemaFactory.build(name="r1"),
+        "r2": RuleSchemaFactory.build(name="r2"),
+    }
+    rules_2 = {
+        "r3": RuleSchemaFactory.build(name="r3"),
+        "r4": RuleSchemaFactory.build(name="r4"),
+    }
+
+    default = {"default": RuleSchemaFactory.build(name="default")}
+
+    scanner_1 = ScannerNamespaceFactory.build(namespace="r1", rules=rules_1)
+    rule_realm = RuleRealmNamespaceFactory.build(
+        namespace="r2", rules=rules_2, default=default, imports=["r1"], updated=True
+    )
+    scanner_2 = ScannerNamespaceFactory.build(namespace="r3", imports=["r1", "r2"])
+
+    cache = make_namespace_cache([scanner_1, scanner_2], [rule_realm])
+    result = get_updated_scanners([scanner_1, scanner_2], cache)
+
+    assert len(result) == 1
+    assert result[0].namespace == scanner_2.namespace
+    assert result[0].rules == rules_1 | rules_2
+    assert result[0].updated
+    assert result[0].default == default
 
 
 @pytest.mark.parametrize("with_default", [True, False])

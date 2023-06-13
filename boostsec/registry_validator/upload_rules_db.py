@@ -276,7 +276,7 @@ def main(
         print("No module rules to update.")
         return None
 
-    for scanner in get_updated_scanners(scanners, namespace_cache):
+    for scanner in scanners_to_update:
         upload_rules_db(scanner, api_endpoint, api_token)
 
 
