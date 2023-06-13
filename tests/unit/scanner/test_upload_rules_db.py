@@ -1,7 +1,7 @@
 """Test."""
 from pathlib import Path
 from subprocess import check_call  # noqa: S404
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urljoin
 
 import pytest
