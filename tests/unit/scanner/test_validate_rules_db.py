@@ -5,7 +5,7 @@ import pytest
 import yaml
 from typer.testing import CliRunner
 
-from boostsec.registry_validator.shared import RegistryConfig
+from boostsec.registry_validator.config import RegistryConfig
 from boostsec.registry_validator.validate_rules_db import (
     RulesDbPath,
     app,

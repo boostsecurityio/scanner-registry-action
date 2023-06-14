@@ -1,0 +1,32 @@
+rules:
+  CWE-1004:
+    categories:
+    - ALL
+    - cwe-1004
+    - owasp-top-10
+    description: CWE-1004 description
+    group: top10-security-misconfiguration
+    name: CWE-1004
+    pretty_name: 'CWE-1004: Sensitive Cookie Without ''HttpOnly'' Flag'
+    ref: https://cwe.mitre.org/data/definitions/1004.html
+  CWE-1007:
+    categories:
+    - ALL
+    - boost-hardened
+    description: CWE-1007 description
+    group: top10-insecure-design
+    name: CWE-1007
+    pretty_name: 'CWE-1007: Insufficient Visual Distinction of Homoglyphs Presented
+      to User'
+    ref: https://cwe.mitre.org/data/definitions/1007.html
+
+default:
+  CWE-UNKNOWN:
+    categories:
+      - ALL
+      - boost-hardened
+    group: top10-insecure-design
+    name: CWE-UNKNOWN
+    pretty_name: CWE-UNKNOWN - Original rule did not map to a known CWE rule
+    description: The original rule could not be map to a CWE rule
+    ref: https://cwe.mitre.org/

@@ -7,8 +7,9 @@ import typer
 import yaml
 from pydantic import BaseModel, ValidationError
 
+from boostsec.registry_validator.config import RegistryConfig
 from boostsec.registry_validator.parameters import RegistryPath
-from boostsec.registry_validator.shared import RegistryConfig, RulesDbModel
+from boostsec.registry_validator.schema import RulesDbSchema
 
 
 class RulesDbPath(BaseModel):
@@ -67,10 +68,10 @@ def _format_validation_error(e: dict[str, Any]) -> str:
         return f"{loc}: {msg}"
 
 
-def validate_rules_db(rules_db: Dict[str, Any]) -> RulesDbModel:
+def validate_rules_db(rules_db: Dict[str, Any]) -> RulesDbSchema:
     """Validate rule is valid."""
     try:
-        rule = RulesDbModel.parse_obj(rules_db)
+        rule = RulesDbSchema.parse_obj(rules_db)
     except ValidationError as e:
         _log_error_and_exit(
             "Rules db is invalid: "

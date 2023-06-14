@@ -1,0 +1,3 @@
+import:
+  - boostsecurityio/mitre-cwe
+  - boostsecurityio/simple-scanner
