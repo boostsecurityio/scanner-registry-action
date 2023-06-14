@@ -1,5 +1,4 @@
 """Uploads the Rules DB file."""
-import os
 import sys
 from pathlib import Path
 from subprocess import check_call, check_output  # noqa: S404
@@ -41,17 +40,6 @@ def _log_error_and_exit(message: str) -> None:
     """Log an error message and exit."""
     print("ERROR: " + message)
     sys.exit(1)
-
-
-def render_doc_url(unrendered_url: str) -> str:
-    """Render doc url."""
-    var_name = "BOOSTSEC_DOC_BASE_URL"
-    placeholder = f"{{{var_name}}}"
-    if placeholder in unrendered_url:
-        doc_base_url = os.environ[var_name]
-        return unrendered_url.replace(placeholder, doc_base_url)
-    else:
-        return unrendered_url
 
 
 def find_updated_scanners(
@@ -106,7 +94,7 @@ def _get_variables(
                     "group": rule.group,
                     "name": rule.name,
                     "prettyName": rule.pretty_name,
-                    "ref": render_doc_url(rule.ref),
+                    "ref": rule.ref,
                 }
                 for rule in rules.values()
             ],

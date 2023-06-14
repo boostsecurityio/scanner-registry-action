@@ -10,6 +10,7 @@ class RuleModelFactory(ModelFactory[RuleModel]):
     __model__ = RuleModel
 
     categories = Use(lambda: ["ALL"])
+    ref = Use(lambda: "https://example.org")
 
 
 class RuleDbModelFactory(ModelFactory[RulesDbModel]):
