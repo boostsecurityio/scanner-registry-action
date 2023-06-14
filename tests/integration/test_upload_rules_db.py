@@ -491,5 +491,5 @@ def test_main_module_missing_rules(
     )
 
     assert requests_mock.call_count == 0
-    assert result.exit_code == 1
+    assert result.exit_code == 0
     assert "WARNING: rules.yaml not found in " in result.stdout

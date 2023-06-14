@@ -87,6 +87,9 @@ def load_scanners(scanners_path: Path, updated_ns: set[str]) -> list[ScannerName
             namespace = "boostsecurityio/native-scanner"
         driver = module_yaml["name"]
         rules_path = module_path.parent / "rules.yaml"
+        if not rules_path.exists():
+            print(f'WARNING: rules.yaml not found in "{namespace}". Skipping...')
+            continue
         rules_db_yaml = yaml.safe_load(rules_path.read_text())
         rules = RulesDbSchema.parse_obj(rules_db_yaml)
         scanners.append(
