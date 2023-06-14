@@ -1,8 +1,11 @@
 """Tests for shared module."""
+from pathlib import Path
+
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from pydantic import ValidationError
 
+from boostsec.registry_validator.shared import RegistryConfig
 from boostsec.registry_validator.testing.factories import (
     RuleDbModelFactory,
     RuleModelFactory,
@@ -106,3 +109,10 @@ def test_render_doc_url_error_empty_env_var() -> None:
     env_var_name = "BOOSTSEC_DOC_BASE_URL"
     with pytest.raises(KeyError):
         RuleModelFactory.build(ref=f"{{{env_var_name}}}/a/path")
+
+
+def test_registry_config_from_path(tmp_path: Path) -> None:
+    """Should init config from a registry base path."""
+    config = RegistryConfig.from_registry(tmp_path)
+    assert config.scanners_path == tmp_path / "scanners"
+    assert config.rules_realm_path == tmp_path / "rules-realm"

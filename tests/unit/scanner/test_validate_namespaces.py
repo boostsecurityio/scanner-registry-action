@@ -45,26 +45,26 @@ def _create_rules_realm(tmp_path: Path, namespace: str) -> None:
 
 
 @pytest.fixture()
-def create_unique_modules(tmp_path: Path) -> Path:
+def create_unique_modules(scanners_path: Path) -> Path:
     """Create a module.yaml file."""
-    _create_module_yaml(tmp_path, "test1")
-    _create_module_yaml(tmp_path, "test2")
-    _create_module_yaml(tmp_path, "test3")
-    return tmp_path
+    _create_module_yaml(scanners_path, "test1")
+    _create_module_yaml(scanners_path, "test2")
+    _create_module_yaml(scanners_path, "test3")
+    return scanners_path
 
 
 @pytest.fixture()
-def create_repeated_modules(tmp_path: Path) -> Path:
+def create_repeated_modules(scanners_path: Path) -> Path:
     """Create a module.yaml file."""
-    _create_module_yaml(tmp_path, "test1")
-    _create_module_yaml(tmp_path, "test2")
-    _create_module_yaml(tmp_path, "test2")
-    return tmp_path
+    _create_module_yaml(scanners_path, "test1")
+    _create_module_yaml(scanners_path, "test2")
+    _create_module_yaml(scanners_path, "test2")
+    return scanners_path
 
 
 def test_find_module_yaml(create_unique_modules: Path) -> None:
     """Test find_module_yaml."""
-    modules = find_module_yaml(str(create_unique_modules))
+    modules = find_module_yaml(create_unique_modules)
     assert len(modules) == 3
 
 
@@ -79,7 +79,7 @@ def test_find_rules_realm_namespace(rules_realm_path: Path) -> None:
 
 def test_get_module_namespaces(create_unique_modules: Path) -> None:
     """Should return the namespaces from the modules.yaml files."""
-    modules = find_module_yaml(str(create_unique_modules))
+    modules = find_module_yaml(create_unique_modules)
     assert sorted(get_module_namespaces(modules)) == sorted(["test1", "test2", "test3"])
 
 
@@ -95,7 +95,7 @@ def test_get_module_namespaces(create_unique_modules: Path) -> None:
         ),
     ],
 )
-def test_validate_unique_namepsace(
+def test_validate_unique_namespace(
     namespaces: list[str],
     unique: bool,
     expected: str,
@@ -115,7 +115,7 @@ def test_validate_unique_namepsace(
 
 def test_validate_namespaces(create_unique_modules: Path) -> None:
     """Test validate_namespaces_from_module_yaml."""
-    modules = find_module_yaml(str(create_unique_modules))
+    modules = find_module_yaml(create_unique_modules)
     validate_namespaces(modules, [])
 
 
@@ -124,7 +124,7 @@ def test_validate_namespaces_without_namespace(
 ) -> None:
     """Test validate_namespaces_from_module_yaml."""
     _create_module_yaml(tmp_path)
-    modules = find_module_yaml(str(tmp_path))
+    modules = find_module_yaml(tmp_path)
     with pytest.raises(SystemExit):
         validate_namespaces(modules, [])
     out, _ = capfd.readouterr()
@@ -147,7 +147,7 @@ def test_validate_namespaces_with_rules_realm(
     capfd: pytest.CaptureFixture[str],
 ) -> None:
     """Should identify duplicate between modules & rules realm."""
-    modules = find_module_yaml(str(create_unique_modules))
+    modules = find_module_yaml(create_unique_modules)
 
     call = partial(validate_namespaces, modules, rules_ns)
     if unique:
@@ -160,18 +160,17 @@ def test_validate_namespaces_with_rules_realm(
     assert expected == out
 
 
+@pytest.mark.usefixtures("create_unique_modules")
 def test_main(
-    create_unique_modules: Path, rules_realm_path: Path, cli_runner: CliRunner
+    registry_path: Path, rules_realm_path: Path, cli_runner: CliRunner
 ) -> None:
     """Test main."""
     _create_rules_realm(rules_realm_path, "rules-ns")
     result = cli_runner.invoke(
         app,
         [
-            "--modules-path",
-            str(create_unique_modules),
-            "--rules-realm-path",
-            str(rules_realm_path),
+            "--registry-path",
+            str(registry_path),
         ],
     )
     assert result.stdout == "\n".join(
@@ -183,19 +182,17 @@ def test_main(
     )
 
 
+@pytest.mark.usefixtures("create_repeated_modules")
 def test_main_error(
-    create_repeated_modules: Path,
-    rules_realm_path: Path,
+    registry_path: Path,
     cli_runner: CliRunner,
 ) -> None:
     """Test main with repeated namespaces."""
     result = cli_runner.invoke(
         app,
         [
-            "--modules-path",
-            str(create_repeated_modules),
-            "--rules-realm-path",
-            str(rules_realm_path),
+            "--registry-path",
+            str(registry_path),
         ],
     )
     assert result.exit_code == 1
@@ -209,26 +206,27 @@ def test_main_error(
 
 
 def test_main_invalid_module(
-    tmp_path: Path, rules_realm_path: Path, cli_runner: CliRunner
+    registry_path: Path,
+    scanners_path: Path,
+    cli_runner: CliRunner,
 ) -> None:
     """Test main with repeated namespaces."""
-    _create_module_yaml(tmp_path)
+    _create_module_yaml(scanners_path)
     result = cli_runner.invoke(
         app,
         [
-            "--modules-path",
-            str(tmp_path),
-            "--rules-realm-path",
-            str(rules_realm_path),
+            "--registry-path",
+            str(registry_path),
         ],
     )
     assert result.exit_code == 1
     assert len(re.findall(r"ERROR: .* is a required property in", result.stdout)) == 1
 
 
+@pytest.mark.usefixtures("create_unique_modules")
 def test_main_with_module_rules_duplicate(
-    create_unique_modules: Path,
     rules_realm_path: Path,
+    registry_path: Path,
     cli_runner: CliRunner,
 ) -> None:
     """Test main with duplicate namespace in module & rules realm."""
@@ -236,10 +234,8 @@ def test_main_with_module_rules_duplicate(
     result = cli_runner.invoke(
         app,
         [
-            "--modules-path",
-            str(create_unique_modules),
-            "--rules-realm-path",
-            str(rules_realm_path),
+            "--registry-path",
+            str(registry_path),
         ],
     )
     assert result.exit_code == 1

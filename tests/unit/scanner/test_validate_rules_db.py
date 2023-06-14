@@ -1,5 +1,5 @@
 """Test."""
-from pathlib import Path, PosixPath
+from pathlib import Path
 
 import pytest
 import yaml
@@ -283,7 +283,7 @@ def test_load_yaml_file(tmp_path: Path) -> None:
     assert load_yaml_file(test_yaml) == yaml.safe_load(VALID_RULES_DB_STRING)
 
 
-def test_load_empty_yaml_file(tmp_path: PosixPath) -> None:
+def test_load_empty_yaml_file(tmp_path: Path) -> None:
     """Test load_yaml_file with empty file."""
     test_yaml = tmp_path / "test.yaml"
     test_yaml.write_text("")
@@ -464,6 +464,7 @@ def test_validate_rules_with_valid_rules(
 
 def test_main_with_valid_rules(
     cli_runner: CliRunner,
+    registry_path: Path,
     scanners_path: Path,
     rules_realm_path: Path,
 ) -> None:
@@ -475,10 +476,8 @@ def test_main_with_valid_rules(
     result = cli_runner.invoke(
         app,
         [
-            "--scanners-path",
-            str(scanners_path),
-            "--rules-realm-path",
-            str(rules_realm_path),
+            "--registry-path",
+            str(registry_path),
         ],
     )
     assert result.stdout == (
@@ -489,8 +488,8 @@ def test_main_with_valid_rules(
 
 def test_main_with_valid_imports(
     cli_runner: CliRunner,
+    registry_path: Path,
     scanners_path: Path,
-    rules_realm_path: Path,
 ) -> None:
     """Test main with valid imported rules."""
     _create_module_rules(
@@ -502,10 +501,8 @@ def test_main_with_valid_imports(
     result = cli_runner.invoke(
         app,
         [
-            "--scanners-path",
-            str(scanners_path),
-            "--rules-realm-path",
-            str(rules_realm_path),
+            "--registry-path",
+            str(registry_path),
         ],
     )
     assert "Validating namespace/module-a/rules.yaml\n" in result.stdout
@@ -514,6 +511,7 @@ def test_main_with_valid_imports(
 
 def test_main_with_valid_imports_from_realm(
     cli_runner: CliRunner,
+    registry_path: Path,
     scanners_path: Path,
     rules_realm_path: Path,
 ) -> None:
@@ -527,10 +525,8 @@ def test_main_with_valid_imports_from_realm(
     result = cli_runner.invoke(
         app,
         [
-            "--scanners-path",
-            str(scanners_path),
-            "--rules-realm-path",
-            str(rules_realm_path),
+            "--registry-path",
+            str(registry_path),
         ],
     )
     assert "Validating namespace/module-a/rules.yaml\n" in result.stdout
@@ -540,6 +536,7 @@ def test_main_with_valid_imports_from_realm(
 @pytest.mark.parametrize("from_realm", [True, False])
 def test_main_with_empty_rules_db(
     cli_runner: CliRunner,
+    registry_path: Path,
     scanners_path: Path,
     rules_realm_path: Path,
     from_realm: bool,
@@ -551,10 +548,8 @@ def test_main_with_empty_rules_db(
     result = cli_runner.invoke(
         app,
         [
-            "--scanners-path",
-            str(scanners_path),
-            "--rules-realm-path",
-            str(rules_realm_path),
+            "--registry-path",
+            str(registry_path),
         ],
     )
     assert result.exit_code == 1
@@ -579,6 +574,7 @@ def test_main_with_empty_rules_db(
 def test_main_with_error(
     cli_runner: CliRunner,
     rules_db_yaml: str,
+    registry_path: Path,
     scanners_path: Path,
     rules_realm_path: Path,
     expected: str,
@@ -592,19 +588,15 @@ def test_main_with_error(
     result = cli_runner.invoke(
         app,
         [
-            "--scanners-path",
-            str(scanners_path),
-            "--rules-realm-path",
-            str(rules_realm_path),
+            "--registry-path",
+            str(registry_path),
         ],
     )
     assert result.exit_code == 1
     assert result.stdout == f"Validating ns/invalid/rules.yaml\n{expected}\n"
 
 
-def test_main_with_without_rules_db(cli_runner: CliRunner, tmp_path: PosixPath) -> None:
+def test_main_with_without_rules_db(cli_runner: CliRunner, registry_path: Path) -> None:
     """Test main with empty rules db."""
-    result = cli_runner.invoke(
-        app, ["--scanners-path", str(tmp_path), "--rules-realm-path", str(tmp_path)]
-    )
+    result = cli_runner.invoke(app, ["--registry-path", str(registry_path)])
     assert result.stdout == "No Rules DB found\n"

@@ -94,6 +94,14 @@ class RegistryConfig(BaseModel):
     scanners_path: Path
     rules_realm_path: Path
 
+    @classmethod
+    def from_registry(cls, registry_path: Path) -> "RegistryConfig":
+        """Initialize a RegistryConfig from the base registry path."""
+        return cls(
+            scanners_path=registry_path / "scanners",
+            rules_realm_path=registry_path / "rules-realm",
+        )
+
 
 def _render_doc_url(unrendered_url: str) -> str:
     """Render doc url."""

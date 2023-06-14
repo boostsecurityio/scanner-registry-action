@@ -7,7 +7,7 @@ import typer
 import yaml
 from pydantic import BaseModel, ValidationError
 
-from boostsec.registry_validator.parameters import RulesRealmPath, ScannersPath
+from boostsec.registry_validator.parameters import RegistryPath
 from boostsec.registry_validator.shared import RegistryConfig, RulesDbModel
 
 
@@ -131,14 +131,9 @@ def validate_rules(raw_rules_db: Dict[str, Any], config: RegistryConfig) -> None
 
 
 @app.command()
-def main(
-    scanners_path: str = ScannersPath,
-    rules_realm_path: str = RulesRealmPath,
-) -> None:
+def main(registry_path: Path = RegistryPath) -> None:
     """Validate the Rules DB file."""
-    config = RegistryConfig(
-        scanners_path=Path(scanners_path), rules_realm_path=Path(rules_realm_path)
-    )
+    config = RegistryConfig.from_registry(registry_path)
     if rules_db_list := find_rules_db_yaml(config):
         for rules_db_path in rules_db_list:
             _log_info(
