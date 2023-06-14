@@ -2,6 +2,7 @@
 from pathlib import Path
 
 import pytest
+from typer.testing import CliRunner
 
 from boostsec.registry_validator.shared import RegistryConfig
 
@@ -37,3 +38,9 @@ def rules_realm_path(registry_path: Path) -> Path:
 def registry_config(scanners_path: Path, rules_realm_path: Path) -> RegistryConfig:
     """Return a RegistryConfig from valid temporary paths."""
     return RegistryConfig(scanners_path, rules_realm_path)
+
+
+@pytest.fixture()
+def cli_runner() -> CliRunner:
+    """Return a CliRunner."""
+    return CliRunner()

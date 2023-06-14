@@ -1,11 +1,13 @@
 """Validates that namespaces are unique."""
-import argparse
 import sys
 from pathlib import Path
 
+import typer
 import yaml
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
+
+from boostsec.registry_validator.parameters import ModulesPath, RulesRealmPath
 
 MODULE_SCHEMA = """
 type: object
@@ -35,6 +37,8 @@ required:
   - config
   - steps
 """
+
+app = typer.Typer()
 
 
 def _log_error_and_exit(message: str) -> None:
@@ -97,7 +101,11 @@ def validate_namespaces(modules_list: list[Path], rule_namespaces: list[str]) ->
     validate_unique_namepsace(module_namespaces + rule_namespaces)
 
 
-def main(modules_path: str, rules_realm_path: str) -> None:
+@app.command()
+def main(
+    modules_path: str = ModulesPath,
+    rules_realm_path: str = RulesRealmPath,
+) -> None:
     """Validate that namespaces are unique."""
     print("Validating namespaces...")
     modules_list = find_module_yaml(modules_path)
@@ -109,16 +117,4 @@ def main(modules_path: str, rules_realm_path: str) -> None:
 
 
 if __name__ == "__main__":  # pragma: no cover
-    parser = argparse.ArgumentParser(description="Process a rule database.")
-    parser.add_argument(
-        "-m",
-        "--modules-path",
-        help="The location of the rule database.",
-    )
-    parser.add_argument(
-        "-r",
-        "--rules-realm-path",
-        help="The location of the rules realm.",
-    )
-    args = parser.parse_args()
-    main(**vars(args))
+    app()

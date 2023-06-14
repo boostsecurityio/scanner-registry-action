@@ -9,11 +9,12 @@ import pytest
 import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from requests_mock import Mocker
+from typer.testing import CliRunner
 
 from boostsec.registry_validator.shared import RegistryConfig
 from boostsec.registry_validator.upload_rules_db import (
+    app,
     find_updated_scanners,
-    main,
     render_doc_url,
     upload_rules_db,
 )
@@ -727,7 +728,7 @@ def test_find_updated_scanners_ignore_rules_realm(
 @patch("boostsec.registry_validator.upload_rules_db.check_call", Mock())
 def test_main_success(
     mock_check_output: Any,
-    capfd: pytest.CaptureFixture[str],
+    cli_runner: CliRunner,
     scanners_path: Path,
     rules_realm_path: Path,
     requests_mock: Mocker,
@@ -748,18 +749,32 @@ def test_main_success(
     mock_subprocess_decode = mock_check_output.return_value.decode
     mock_subprocess_decode.return_value.splitlines.return_value = [str(module_path)]
 
-    main(url, "my-token", str(scanners_path), str(rules_realm_path))
+    result = cli_runner.invoke(
+        app,
+        [
+            "--api-endpoint",
+            "https://my_endpoint/",
+            "--api-token",
+            "my-token",
+            "--scanners-path",
+            str(scanners_path),
+            "--rules-realm-path",
+            str(rules_realm_path),
+        ],
+    )
 
     assert requests_mock.call_count == 1
-    out, _ = capfd.readouterr()
-    assert out == 'Uploading rules "namespace-example-main" "Example Scanner"...\n'
+    assert (
+        result.stdout
+        == 'Uploading rules "namespace-example-main" "Example Scanner"...\n'
+    )
 
 
 @patch("boostsec.registry_validator.upload_rules_db.check_output")
 @patch("boostsec.registry_validator.upload_rules_db.check_call", Mock())
 def test_main_success_warning(
     mock_check_output: Any,
-    capfd: pytest.CaptureFixture[str],
+    cli_runner: CliRunner,
     scanners_path: Path,
     rules_realm_path: Path,
     requests_mock: Mocker,
@@ -787,18 +802,29 @@ def test_main_success_warning(
         str(module2),
     ]
 
-    main(url, "my-token", str(scanners_path), str(rules_realm_path))
+    result = cli_runner.invoke(
+        app,
+        [
+            "--api-endpoint",
+            "https://my_endpoint/",
+            "--api-token",
+            "my-token",
+            "--scanners-path",
+            str(scanners_path),
+            "--rules-realm-path",
+            str(rules_realm_path),
+        ],
+    )
 
     assert requests_mock.call_count == 1
-    out, _ = capfd.readouterr()
-    assert "WARNING: rules.yaml not found in " in out
+    assert "WARNING: rules.yaml not found in " in result.stdout
 
 
 @patch("boostsec.registry_validator.upload_rules_db.check_output")
 @patch("boostsec.registry_validator.upload_rules_db.check_call", Mock())
 def test_main_no_modules_to_update(
     mock_check_output: Any,
-    capfd: pytest.CaptureFixture[str],
+    cli_runner: CliRunner,
     scanners_path: Path,
     rules_realm_path: Path,
     requests_mock: Mocker,
@@ -806,18 +832,30 @@ def test_main_no_modules_to_update(
     """Test upload_rules_db."""
     mock_subprocess_decode = mock_check_output.return_value.decode
     mock_subprocess_decode.return_value.splitlines.return_value = []
-    main("https://my_endpoint/", "my-token", str(scanners_path), str(rules_realm_path))
+
+    result = cli_runner.invoke(
+        app,
+        [
+            "--api-endpoint",
+            "https://my_endpoint/",
+            "--api-token",
+            "my-token",
+            "--scanners-path",
+            str(scanners_path),
+            "--rules-realm-path",
+            str(rules_realm_path),
+        ],
+    )
 
     assert requests_mock.call_count == 0
-    out, _ = capfd.readouterr()
-    assert out == "No module rules to update.\n"
+    assert result.stdout == "No module rules to update.\n"
 
 
 @patch("boostsec.registry_validator.upload_rules_db.check_output")
 @patch("boostsec.registry_validator.upload_rules_db.check_call", Mock())
 def test_main_only_rules_realm(
     mock_check_output: Any,
-    capfd: pytest.CaptureFixture[str],
+    cli_runner: CliRunner,
     scanners_path: Path,
     rules_realm_path: Path,
     requests_mock: Mocker,
@@ -828,18 +866,29 @@ def test_main_only_rules_realm(
     mock_subprocess_decode = mock_check_output.return_value.decode
     mock_subprocess_decode.return_value.splitlines.return_value = []
 
-    main("https://my_endpoint/", "my-token", str(scanners_path), str(rules_realm_path))
+    result = cli_runner.invoke(
+        app,
+        [
+            "--api-endpoint",
+            "https://my_endpoint/",
+            "--api-token",
+            "my-token",
+            "--scanners-path",
+            str(scanners_path),
+            "--rules-realm-path",
+            str(rules_realm_path),
+        ],
+    )
 
     assert requests_mock.call_count == 0
-    out, _ = capfd.readouterr()
-    assert out == "No module rules to update.\n"
+    assert result.stdout == "No module rules to update.\n"
 
 
 @patch("boostsec.registry_validator.upload_rules_db.check_output")
 @patch("boostsec.registry_validator.upload_rules_db.check_call", Mock())
 def test_main_only_rules_realm_with_module(
     mock_check_output: Any,
-    capfd: pytest.CaptureFixture[str],
+    cli_runner: CliRunner,
     scanners_path: Path,
     rules_realm_path: Path,
     requests_mock: Mocker,
@@ -864,8 +913,19 @@ def test_main_only_rules_realm_with_module(
         str(module),
     ]
 
-    main("https://my_endpoint/", "my-token", str(scanners_path), str(rules_realm_path))
+    result = cli_runner.invoke(
+        app,
+        [
+            "--api-endpoint",
+            "https://my_endpoint/",
+            "--api-token",
+            "my-token",
+            "--scanners-path",
+            str(scanners_path),
+            "--rules-realm-path",
+            str(rules_realm_path),
+        ],
+    )
 
     assert requests_mock.call_count == 1
-    out, _ = capfd.readouterr()
-    assert out == 'Uploading rules "ns/test" "Example Scanner"...\n'
+    assert result.stdout == 'Uploading rules "ns/test" "Example Scanner"...\n'

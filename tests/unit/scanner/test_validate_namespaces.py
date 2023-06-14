@@ -6,12 +6,13 @@ from uuid import uuid4
 
 import pytest
 import yaml
+from typer.testing import CliRunner
 
 from boostsec.registry_validator.validate_namespaces import (
+    app,
     find_module_yaml,
     find_rules_realm_namespace,
     get_module_namespaces,
-    main,
     validate_namespaces,
     validate_unique_namepsace,
 )
@@ -160,16 +161,20 @@ def test_validate_namespaces_with_rules_realm(
 
 
 def test_main(
-    create_unique_modules: Path,
-    rules_realm_path: Path,
-    capfd: pytest.CaptureFixture[str],
+    create_unique_modules: Path, rules_realm_path: Path, cli_runner: CliRunner
 ) -> None:
     """Test main."""
     _create_rules_realm(rules_realm_path, "rules-ns")
-
-    main(str(create_unique_modules), str(rules_realm_path))
-    out, _ = capfd.readouterr()
-    assert out == "\n".join(
+    result = cli_runner.invoke(
+        app,
+        [
+            "--modules-path",
+            str(create_unique_modules),
+            "--rules-realm-path",
+            str(rules_realm_path),
+        ],
+    )
+    assert result.stdout == "\n".join(
         [
             "Validating namespaces...",
             "Namespaces are unique.",
@@ -181,13 +186,20 @@ def test_main(
 def test_main_error(
     create_repeated_modules: Path,
     rules_realm_path: Path,
-    capfd: pytest.CaptureFixture[str],
+    cli_runner: CliRunner,
 ) -> None:
     """Test main with repeated namespaces."""
-    with pytest.raises(SystemExit):
-        main(str(create_repeated_modules), str(rules_realm_path))
-    out, _ = capfd.readouterr()
-    assert out == "\n".join(
+    result = cli_runner.invoke(
+        app,
+        [
+            "--modules-path",
+            str(create_repeated_modules),
+            "--rules-realm-path",
+            str(rules_realm_path),
+        ],
+    )
+    assert result.exit_code == 1
+    assert result.stdout == "\n".join(
         [
             "Validating namespaces...",
             "ERROR: namespaces are not unique, duplicate: test2",
@@ -197,27 +209,41 @@ def test_main_error(
 
 
 def test_main_invalid_module(
-    tmp_path: Path, rules_realm_path: Path, capfd: pytest.CaptureFixture[str]
+    tmp_path: Path, rules_realm_path: Path, cli_runner: CliRunner
 ) -> None:
     """Test main with repeated namespaces."""
     _create_module_yaml(tmp_path)
-    with pytest.raises(SystemExit):
-        main(str(tmp_path), str(rules_realm_path))
-    out, _ = capfd.readouterr()
-    assert len(re.findall(r"ERROR: .* is a required property in", out)) == 1
+    result = cli_runner.invoke(
+        app,
+        [
+            "--modules-path",
+            str(tmp_path),
+            "--rules-realm-path",
+            str(rules_realm_path),
+        ],
+    )
+    assert result.exit_code == 1
+    assert len(re.findall(r"ERROR: .* is a required property in", result.stdout)) == 1
 
 
 def test_main_with_module_rules_duplicate(
     create_unique_modules: Path,
     rules_realm_path: Path,
-    capfd: pytest.CaptureFixture[str],
+    cli_runner: CliRunner,
 ) -> None:
     """Test main with duplicate namespace in module & rules realm."""
     _create_rules_realm(rules_realm_path, "test1")
-    with pytest.raises(SystemExit):
-        main(str(create_unique_modules), str(rules_realm_path))
-    out, _ = capfd.readouterr()
-    assert out == "\n".join(
+    result = cli_runner.invoke(
+        app,
+        [
+            "--modules-path",
+            str(create_unique_modules),
+            "--rules-realm-path",
+            str(rules_realm_path),
+        ],
+    )
+    assert result.exit_code == 1
+    assert result.stdout == "\n".join(
         [
             "Validating namespaces...",
             "ERROR: namespaces are not unique, duplicate: test1",

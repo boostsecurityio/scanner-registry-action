@@ -4,13 +4,14 @@ from pathlib import Path, PosixPath
 import pytest
 import yaml
 from _pytest.monkeypatch import MonkeyPatch
+from typer.testing import CliRunner
 
 from boostsec.registry_validator.shared import RegistryConfig
 from boostsec.registry_validator.validate_rules_db import (
     RulesDbPath,
+    app,
     find_rules_db_yaml,
     load_yaml_file,
-    main,
     validate_all_in_category,
     validate_description_length,
     validate_imports,
@@ -557,7 +558,7 @@ def test_validate_rules_with_valid_rules(
 
 
 def test_main_with_valid_rules(
-    capfd: pytest.CaptureFixture[str],
+    cli_runner: CliRunner,
     scanners_path: Path,
     rules_realm_path: Path,
 ) -> None:
@@ -566,16 +567,23 @@ def test_main_with_valid_rules(
     _create_module_rules(
         rules_realm_path, "namespace/realm-name", VALID_RULES_DB_STRING
     )
-    main(str(scanners_path), str(rules_realm_path))
-    out, _ = capfd.readouterr()
-    assert (
+    result = cli_runner.invoke(
+        app,
+        [
+            "--scanners-path",
+            str(scanners_path),
+            "--rules-realm-path",
+            str(rules_realm_path),
+        ],
+    )
+    assert result.stdout == (
         "Validating namespace/module-name/rules.yaml\n"
-        "Validating namespace/realm-name/rules.yaml\n" == out
+        "Validating namespace/realm-name/rules.yaml\n"
     )
 
 
 def test_main_with_valid_imports(
-    capfd: pytest.CaptureFixture[str],
+    cli_runner: CliRunner,
     scanners_path: Path,
     rules_realm_path: Path,
 ) -> None:
@@ -586,14 +594,21 @@ def test_main_with_valid_imports(
         VALID_RULES_DB_STRING_WITH_ONLY_IMPORT,
     )
     _create_module_rules(scanners_path, "namespace/module-a", VALID_RULES_DB_STRING)
-    main(str(scanners_path), str(rules_realm_path))
-    out, _ = capfd.readouterr()
-    assert "Validating namespace/module-a/rules.yaml\n" in out
-    assert "Validating testing-ns/testing-module/rules.yaml\n" in out
+    result = cli_runner.invoke(
+        app,
+        [
+            "--scanners-path",
+            str(scanners_path),
+            "--rules-realm-path",
+            str(rules_realm_path),
+        ],
+    )
+    assert "Validating namespace/module-a/rules.yaml\n" in result.stdout
+    assert "Validating testing-ns/testing-module/rules.yaml\n" in result.stdout
 
 
 def test_main_with_valid_imports_from_realm(
-    capfd: pytest.CaptureFixture[str],
+    cli_runner: CliRunner,
     scanners_path: Path,
     rules_realm_path: Path,
 ) -> None:
@@ -604,15 +619,22 @@ def test_main_with_valid_imports_from_realm(
         VALID_RULES_DB_STRING_WITH_ONLY_IMPORT,
     )
     _create_module_rules(rules_realm_path, "namespace/module-a", VALID_RULES_DB_STRING)
-    main(str(scanners_path), str(rules_realm_path))
-    out, _ = capfd.readouterr()
-    assert "Validating namespace/module-a/rules.yaml\n" in out
-    assert "Validating testing-ns/testing-module/rules.yaml\n" in out
+    result = cli_runner.invoke(
+        app,
+        [
+            "--scanners-path",
+            str(scanners_path),
+            "--rules-realm-path",
+            str(rules_realm_path),
+        ],
+    )
+    assert "Validating namespace/module-a/rules.yaml\n" in result.stdout
+    assert "Validating testing-ns/testing-module/rules.yaml\n" in result.stdout
 
 
 @pytest.mark.parametrize("from_realm", [True, False])
 def test_main_with_empty_rules_db(
-    capfd: pytest.CaptureFixture[str],
+    cli_runner: CliRunner,
     scanners_path: Path,
     rules_realm_path: Path,
     from_realm: bool,
@@ -621,10 +643,17 @@ def test_main_with_empty_rules_db(
     _create_module_rules(
         rules_realm_path if from_realm else scanners_path, "ns/empty", ""
     )
-    with pytest.raises(SystemExit):
-        main(str(scanners_path), str(rules_realm_path))
-    out, _ = capfd.readouterr()
-    assert "Validating ns/empty/rules.yaml\nERROR: Rules DB is empty\n" == out
+    result = cli_runner.invoke(
+        app,
+        [
+            "--scanners-path",
+            str(scanners_path),
+            "--rules-realm-path",
+            str(rules_realm_path),
+        ],
+    )
+    assert result.exit_code == 1
+    assert result.stdout == "Validating ns/empty/rules.yaml\nERROR: Rules DB is empty\n"
 
 
 @pytest.mark.parametrize(
@@ -642,7 +671,7 @@ def test_main_with_empty_rules_db(
 )
 @pytest.mark.parametrize("from_realm", [True, False])
 def test_main_with_error(
-    capfd: pytest.CaptureFixture[str],
+    cli_runner: CliRunner,
     rules_db_yaml: str,
     scanners_path: Path,
     rules_realm_path: Path,
@@ -653,16 +682,23 @@ def test_main_with_error(
     _create_module_rules(
         rules_realm_path if from_realm else scanners_path, "ns/invalid", rules_db_yaml
     )
-    with pytest.raises(SystemExit):
-        main(str(scanners_path), str(rules_realm_path))
-    out, _ = capfd.readouterr()
-    assert f"Validating ns/invalid/rules.yaml\n{expected}\n" == out
+
+    result = cli_runner.invoke(
+        app,
+        [
+            "--scanners-path",
+            str(scanners_path),
+            "--rules-realm-path",
+            str(rules_realm_path),
+        ],
+    )
+    assert result.exit_code == 1
+    assert result.stdout == f"Validating ns/invalid/rules.yaml\n{expected}\n"
 
 
-def test_main_with_without_rules_db(
-    capfd: pytest.CaptureFixture[str], tmp_path: PosixPath
-) -> None:
+def test_main_with_without_rules_db(cli_runner: CliRunner, tmp_path: PosixPath) -> None:
     """Test main with empty rules db."""
-    main(str(tmp_path), str(tmp_path))
-    out, _ = capfd.readouterr()
-    assert out == "No Rules DB found\n"
+    result = cli_runner.invoke(
+        app, ["--scanners-path", str(tmp_path), "--rules-realm-path", str(tmp_path)]
+    )
+    assert result.stdout == "No Rules DB found\n"
