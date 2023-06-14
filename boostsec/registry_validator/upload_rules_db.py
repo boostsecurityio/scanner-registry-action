@@ -17,9 +17,7 @@ from boostsec.registry_validator.parameters import (
     RulesRealmPath,
     ScannersPath,
 )
-from boostsec.registry_validator.shared import RegistryConfig
-
-RulesDB = dict[str, dict[str, str]]
+from boostsec.registry_validator.shared import RegistryConfig, Rules, RulesDbModel
 
 MUTATION = gql(
     """
@@ -93,7 +91,7 @@ def _get_header(api_token: str) -> dict[str, str]:
 
 
 def _get_variables(
-    namespace: str, driver: str, rules: RulesDB, default_rule: Optional[str] = None
+    namespace: str, driver: str, rules: Rules, default_rule: Optional[str] = None
 ) -> dict[str, Any]:
     """Get the variables."""
     variables = {
@@ -102,15 +100,15 @@ def _get_variables(
             "defaultRule": default_rule,
             "ruleInputs": [
                 {
-                    "categories": rule["categories"],
-                    "description": rule["description"],
+                    "categories": rule.categories,
+                    "description": rule.description,
                     "driver": driver,
-                    "group": rule["group"],
-                    "name": rule["name"],
-                    "prettyName": rule["pretty_name"],
-                    "ref": render_doc_url(rule["ref"]),
+                    "group": rule.group,
+                    "name": rule.name,
+                    "prettyName": rule.pretty_name,
+                    "ref": render_doc_url(rule.ref),
                 }
-                for _, rule in rules.items()
+                for rule in rules.values()
             ],
         },
     }
@@ -128,7 +126,7 @@ def _get_namespace_and_driver(module: Path) -> tuple[str, str]:
 
 def _get_rules_and_default(
     namespace: str, config: RegistryConfig
-) -> tuple[RulesDB, Optional[str]]:
+) -> tuple[Rules, Optional[str]]:
     """Get the rules and default rule if applicable."""
     if namespace == "default":
         namespace = "boostsecurityio/native-scanner"
@@ -140,18 +138,19 @@ def _get_rules_and_default(
     else:
         rules_db_yaml = yaml.safe_load(rules_realm_path.read_text())
 
-    rules: RulesDB = {}
+    rules_db = RulesDbModel.parse_obj(rules_db_yaml)
+    rules: Rules = {}
     default_rule = None
-    if imports := rules_db_yaml.get("import"):
+    if imports := rules_db.imports:
         for ns in imports:
             import_rules, imported_default = _get_rules_and_default(ns, config)
             rules.update(import_rules)
             default_rule = imported_default or default_rule
 
-    if module_rules := rules_db_yaml.get("rules"):
+    if module_rules := rules_db.rules:
         rules.update(module_rules)
 
-    if default := rules_db_yaml.get("default"):
+    if default := rules_db.default:
         rules.update(default)
         default_rule = next(iter(default.keys()))
 

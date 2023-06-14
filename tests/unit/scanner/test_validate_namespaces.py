@@ -14,7 +14,7 @@ from boostsec.registry_validator.validate_namespaces import (
     find_rules_realm_namespace,
     get_module_namespaces,
     validate_namespaces,
-    validate_unique_namepsace,
+    validate_unique_namespace,
 )
 
 
@@ -102,7 +102,7 @@ def test_validate_unique_namepsace(
     capfd: pytest.CaptureFixture[str],
 ) -> None:
     """Should error is duplicate values in namespaces."""
-    call = partial(validate_unique_namepsace, namespaces)
+    call = partial(validate_unique_namespace, namespaces)
     if unique:
         call()
     else:

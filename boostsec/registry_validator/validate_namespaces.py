@@ -76,7 +76,7 @@ def get_module_namespaces(modules_list: list[Path]) -> list[str]:
     return namespaces
 
 
-def validate_unique_namepsace(namespaces: list[str]) -> None:
+def validate_unique_namespace(namespaces: list[str]) -> None:
     """Validate that each namespaces is unique."""
     unique_namespace = set()
     for namespace in namespaces:
@@ -98,7 +98,7 @@ def validate_module_yaml_schema(module: Path) -> None:
 def validate_namespaces(modules_list: list[Path], rule_namespaces: list[str]) -> None:
     """Validate the namespaces are unique between modules & rules realm."""
     module_namespaces = get_module_namespaces(modules_list)
-    validate_unique_namepsace(module_namespaces + rule_namespaces)
+    validate_unique_namespace(module_namespaces + rule_namespaces)
 
 
 @app.command()
