@@ -3,12 +3,10 @@ from pathlib import Path
 
 import pytest
 import yaml
-from typer.testing import CliRunner
 
 from boostsec.registry_validator.config import RegistryConfig
 from boostsec.registry_validator.validate_rules_db import (
     RulesDbPath,
-    app,
     find_rules_db_yaml,
     load_yaml_file,
     validate_imports,
@@ -360,6 +358,10 @@ def test_validate_rules_db_with_valid_rules_db(rules_db_yaml: str) -> None:
             _INVALID_DEFAULT_RULES_DB_STRING,
             "default.my-rule-2.ref is a required property\n",
         ),
+        (
+            _INVALID_DEFAULT_MULTIPLE_RULES_DB_STRING,
+            "default: Only one default rule is allowed\n",
+        ),
     ],
 )
 def test_validate_rules_db_with_invalid_rules_db(
@@ -460,143 +462,3 @@ def test_validate_rules_with_valid_rules(
     validate_rules(yaml.safe_load(rules_db_yaml), registry_config)
     out, _ = capfd.readouterr()
     assert out == ""
-
-
-def test_main_with_valid_rules(
-    cli_runner: CliRunner,
-    registry_path: Path,
-    scanners_path: Path,
-    rules_realm_path: Path,
-) -> None:
-    """Test main with valid rules."""
-    _create_module_rules(scanners_path, "namespace/module-name", VALID_RULES_DB_STRING)
-    _create_module_rules(
-        rules_realm_path, "namespace/realm-name", VALID_RULES_DB_STRING
-    )
-    result = cli_runner.invoke(
-        app,
-        [
-            "--registry-path",
-            str(registry_path),
-        ],
-    )
-    assert result.stdout == (
-        "Validating namespace/module-name/rules.yaml\n"
-        "Validating namespace/realm-name/rules.yaml\n"
-    )
-
-
-def test_main_with_valid_imports(
-    cli_runner: CliRunner,
-    registry_path: Path,
-    scanners_path: Path,
-) -> None:
-    """Test main with valid imported rules."""
-    _create_module_rules(
-        scanners_path,
-        "testing-ns/testing-module",
-        VALID_RULES_DB_STRING_WITH_ONLY_IMPORT,
-    )
-    _create_module_rules(scanners_path, "namespace/module-a", VALID_RULES_DB_STRING)
-    result = cli_runner.invoke(
-        app,
-        [
-            "--registry-path",
-            str(registry_path),
-        ],
-    )
-    assert "Validating namespace/module-a/rules.yaml\n" in result.stdout
-    assert "Validating testing-ns/testing-module/rules.yaml\n" in result.stdout
-
-
-def test_main_with_valid_imports_from_realm(
-    cli_runner: CliRunner,
-    registry_path: Path,
-    scanners_path: Path,
-    rules_realm_path: Path,
-) -> None:
-    """Test main with valid imported rules."""
-    _create_module_rules(
-        scanners_path,
-        "testing-ns/testing-module",
-        VALID_RULES_DB_STRING_WITH_ONLY_IMPORT,
-    )
-    _create_module_rules(rules_realm_path, "namespace/module-a", VALID_RULES_DB_STRING)
-    result = cli_runner.invoke(
-        app,
-        [
-            "--registry-path",
-            str(registry_path),
-        ],
-    )
-    assert "Validating namespace/module-a/rules.yaml\n" in result.stdout
-    assert "Validating testing-ns/testing-module/rules.yaml\n" in result.stdout
-
-
-@pytest.mark.parametrize("from_realm", [True, False])
-def test_main_with_empty_rules_db(
-    cli_runner: CliRunner,
-    registry_path: Path,
-    scanners_path: Path,
-    rules_realm_path: Path,
-    from_realm: bool,
-) -> None:
-    """Test main with empty rules db."""
-    _create_module_rules(
-        rules_realm_path if from_realm else scanners_path, "ns/empty", ""
-    )
-    result = cli_runner.invoke(
-        app,
-        [
-            "--registry-path",
-            str(registry_path),
-        ],
-    )
-    assert result.exit_code == 1
-    assert result.stdout == "Validating ns/empty/rules.yaml\nERROR: Rules DB is empty\n"
-
-
-@pytest.mark.parametrize(
-    ("rules_db_yaml", "expected"),
-    [
-        (
-            _INVALID_RULES_DB_STRING_MISSING_CATEGORIES,
-            "ERROR: Rules db is invalid: "
-            "rules.my-rule-1.categories is a required property",
-        ),
-        (
-            _INVALID_DEFAULT_MULTIPLE_RULES_DB_STRING,
-            "ERROR: Rules db is invalid: default: Only one default rule is allowed",
-        ),
-    ],
-)
-@pytest.mark.parametrize("from_realm", [True, False])
-def test_main_with_error(
-    cli_runner: CliRunner,
-    rules_db_yaml: str,
-    registry_path: Path,
-    scanners_path: Path,
-    rules_realm_path: Path,
-    expected: str,
-    from_realm: bool,
-) -> None:
-    """Test main with empty rules db."""
-    _create_module_rules(
-        rules_realm_path if from_realm else scanners_path, "ns/invalid", rules_db_yaml
-    )
-
-    result = cli_runner.invoke(
-        app,
-        [
-            "--registry-path",
-            str(registry_path),
-        ],
-    )
-    assert result.exit_code == 1
-    assert result.stdout == f"Validating ns/invalid/rules.yaml\n{expected}\n"
-
-
-def test_main_with_without_rules_db(cli_runner: CliRunner, registry_path: Path) -> None:
-    """Test main with empty rules db."""
-    result = cli_runner.invoke(app, ["--registry-path", str(registry_path)])
-    assert result.stdout == "No Rules DB found\n"
