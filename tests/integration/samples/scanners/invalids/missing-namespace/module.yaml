@@ -1,0 +1,10 @@
+
+api_version: 1.0
+
+id: missing-namespace
+name: Missing Namespace
+
+config:
+  support_diff_scan: true
+  require_full_repo: false
+

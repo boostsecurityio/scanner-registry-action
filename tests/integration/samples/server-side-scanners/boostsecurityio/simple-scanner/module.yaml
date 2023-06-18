@@ -5,8 +5,7 @@ name: Simple Scanner
 namespace: boostsecurityio/simple-scanner
 
 config:
+  server-side: true
   support_diff_scan: true
   require_full_repo: false
 
-steps: 
-  - 1
