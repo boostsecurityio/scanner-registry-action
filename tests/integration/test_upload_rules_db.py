@@ -1,8 +1,6 @@
 """Upload rules integrations tests."""
 
-import shutil
 from pathlib import Path
-from typing import Callable
 from urllib.parse import urljoin
 
 from _pytest.monkeypatch import MonkeyPatch
@@ -10,20 +8,15 @@ from requests_mock import Mocker
 from typer.testing import CliRunner
 
 from boostsec.registry_validator.upload_rules_db import app
-
-DATADIR = Path(__file__).parent / "samples"
-
-
-def use_sample(sample: str, registry: Path) -> None:
-    """Copy the sample module to the temp registry."""
-    shutil.copytree((DATADIR / sample).absolute(), (registry / sample).absolute())
+from tests.integration.conftest import CommitChanges, UseSample
 
 
 def test_main_no_module_to_update(
     cli_runner: CliRunner,
     registry_path: Path,
     requests_mock: Mocker,
-    commit_changes: Callable[[], None],
+    commit_changes: CommitChanges,
+    use_sample: UseSample,
 ) -> None:
     """No rules should get uploaded if nothing changed."""
     url = "https://my_endpoint/"
@@ -34,12 +27,12 @@ def test_main_no_module_to_update(
         },
     )
 
-    use_sample("scanners/boostsecurityio/simple-scanner/", registry_path)
+    use_sample("scanners/boostsecurityio/simple-scanner/")
     commit_changes()
 
     # Commit a second time to simulate a past upload
     # Updated rules-realm shouldn't get uploaded
-    use_sample("rules-realm/boostsecurityio/mitre-cwe", registry_path)
+    use_sample("rules-realm/boostsecurityio/mitre-cwe")
     commit_changes()
 
     result = cli_runner.invoke(
@@ -63,7 +56,8 @@ def test_main_simple_scanner(
     cli_runner: CliRunner,
     registry_path: Path,
     requests_mock: Mocker,
-    commit_changes: Callable[[], None],
+    commit_changes: CommitChanges,
+    use_sample: UseSample,
 ) -> None:
     """Should parse and upload boostsecurityio/simple-scanner."""
     url = "https://my_endpoint/"
@@ -74,7 +68,7 @@ def test_main_simple_scanner(
         },
     )
 
-    use_sample("scanners/boostsecurityio/simple-scanner/", registry_path)
+    use_sample("scanners/boostsecurityio/simple-scanner/")
     commit_changes()
 
     result = cli_runner.invoke(
@@ -130,7 +124,8 @@ def test_main_only_import(
     cli_runner: CliRunner,
     registry_path: Path,
     requests_mock: Mocker,
-    commit_changes: Callable[[], None],
+    commit_changes: CommitChanges,
+    use_sample: UseSample,
 ) -> None:
     """Test importing rules & default."""
     url = "https://my_endpoint/"
@@ -141,11 +136,11 @@ def test_main_only_import(
         },
     )
 
-    use_sample("scanners/boostsecurityio/simple-scanner/", registry_path)
-    use_sample("rules-realm/boostsecurityio/mitre-cwe", registry_path)
+    use_sample("scanners/boostsecurityio/simple-scanner/")
+    use_sample("rules-realm/boostsecurityio/mitre-cwe")
     commit_changes()
 
-    use_sample("scanners/others/only-import", registry_path)
+    use_sample("scanners/others/only-import")
     commit_changes()
 
     cli_runner.invoke(
@@ -227,7 +222,8 @@ def test_main_rule_update_trigger_upload(
     cli_runner: CliRunner,
     registry_path: Path,
     requests_mock: Mocker,
-    commit_changes: Callable[[], None],
+    commit_changes: CommitChanges,
+    use_sample: UseSample,
 ) -> None:
     """Test updating an imported rule-realm should update module using it."""
     url = "https://my_endpoint/"
@@ -238,11 +234,11 @@ def test_main_rule_update_trigger_upload(
         },
     )
 
-    use_sample("scanners/boostsecurityio/simple-scanner/", registry_path)
-    use_sample("scanners/others/only-import", registry_path)
+    use_sample("scanners/boostsecurityio/simple-scanner/")
+    use_sample("scanners/others/only-import")
     commit_changes()
 
-    use_sample("rules-realm/boostsecurityio/mitre-cwe", registry_path)
+    use_sample("rules-realm/boostsecurityio/mitre-cwe")
     commit_changes()
 
     cli_runner.invoke(
@@ -324,7 +320,8 @@ def test_main_rule_import_overload(
     cli_runner: CliRunner,
     registry_path: Path,
     requests_mock: Mocker,
-    commit_changes: Callable[[], None],
+    commit_changes: CommitChanges,
+    use_sample: UseSample,
 ) -> None:
     """Test rules importing with rules overloading."""
     url = "https://my_endpoint/"
@@ -335,8 +332,8 @@ def test_main_rule_import_overload(
         },
     )
 
-    use_sample("rules-realm/boostsecurityio/mitre-cwe", registry_path)
-    use_sample("scanners/others/overload", registry_path)
+    use_sample("rules-realm/boostsecurityio/mitre-cwe")
+    use_sample("scanners/others/overload")
     commit_changes()
 
     cli_runner.invoke(
@@ -398,7 +395,8 @@ def test_main_with_placeholder(
     cli_runner: CliRunner,
     registry_path: Path,
     requests_mock: Mocker,
-    commit_changes: Callable[[], None],
+    commit_changes: CommitChanges,
+    use_sample: UseSample,
     monkeypatch: MonkeyPatch,
 ) -> None:
     """Test rules with env placeholder."""
@@ -414,7 +412,7 @@ def test_main_with_placeholder(
     env_var_name = "BOOSTSEC_DOC_BASE_URL"
     monkeypatch.setenv(env_var_name, doc_url)
 
-    use_sample("scanners/others/with-placeholder", registry_path)
+    use_sample("scanners/others/with-placeholder")
     commit_changes()
 
     cli_runner.invoke(
@@ -464,7 +462,8 @@ def test_main_module_missing_rules(
     cli_runner: CliRunner,
     registry_path: Path,
     requests_mock: Mocker,
-    commit_changes: Callable[[], None],
+    commit_changes: CommitChanges,
+    use_sample: UseSample,
 ) -> None:
     """Should warn and exit if a module is missing a rules db."""
     url = "https://my_endpoint/"
@@ -475,7 +474,7 @@ def test_main_module_missing_rules(
         },
     )
 
-    use_sample("scanners/others/missing-rules", registry_path)
+    use_sample("scanners/others/missing-rules")
     commit_changes()
 
     result = cli_runner.invoke(

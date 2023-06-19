@@ -1,9 +1,12 @@
 """Conftest."""
+import shutil
 from pathlib import Path
 from subprocess import check_call  # noqa: S404
 from typing import Callable
 
 import pytest
+
+DATADIR = Path(__file__).parent / "samples"
 
 
 @pytest.fixture()
@@ -20,8 +23,11 @@ def registry_path(tmp_path: Path) -> Path:
     return registry
 
 
+CommitChanges = Callable[[], None]
+
+
 @pytest.fixture()
-def commit_changes(registry_path: Path) -> Callable[[], None]:
+def commit_changes(registry_path: Path) -> CommitChanges:
     """Commit all changes in the git_root repo."""
 
     def commit() -> None:
@@ -31,3 +37,18 @@ def commit_changes(registry_path: Path) -> Callable[[], None]:
         )
 
     return commit
+
+
+UseSample = Callable[[str], None]
+
+
+@pytest.fixture()
+def use_sample(registry_path: Path) -> UseSample:
+    """Copy the sample module to the temp registry."""
+
+    def _use_sample(sample: str) -> None:
+        shutil.copytree(
+            (DATADIR / sample).absolute(), (registry_path / sample).absolute()
+        )
+
+    return _use_sample
