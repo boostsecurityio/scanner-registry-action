@@ -69,11 +69,14 @@ def validate_module_yaml_schema(module: Path) -> ModuleSchema:
 
 
 def validate_namespaces(
-    modules_list: list[ModuleSchema], rule_namespaces: list[str]
+    modules_list: list[ModuleSchema],
+    rule_namespaces: list[str],
+    server_modules: list[ModuleSchema],
 ) -> None:
     """Validate the namespaces are unique between modules & rules realm."""
     module_namespaces = get_module_namespaces(modules_list)
-    validate_unique_namespace(module_namespaces + rule_namespaces)
+    server_namespaces = get_module_namespaces(server_modules)
+    validate_unique_namespace(module_namespaces + rule_namespaces + server_namespaces)
 
 
 @app.command()
@@ -85,8 +88,10 @@ def main(
     print("Validating namespaces...")
     modules_list = find_module_yaml(config.scanners_path)
     rule_namespaces = find_rules_realm_namespace(config.rules_realm_path)
+    server_list = find_module_yaml(config.server_side_scanners_path)
     modules = [validate_module_yaml_schema(module) for module in modules_list]
-    validate_namespaces(modules, rule_namespaces)
+    server_modules = [validate_module_yaml_schema(module) for module in server_list]
+    validate_namespaces(modules, rule_namespaces, server_modules)
     print("Namespaces are unique.")
 
 

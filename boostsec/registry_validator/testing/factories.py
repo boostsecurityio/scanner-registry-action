@@ -12,6 +12,8 @@ class ModuleSchemaFactory(ModelFactory[ModuleSchema]):
 
     __model__ = ModuleSchema
 
+    server_side = Use(lambda: False)
+
 
 class RuleSchemaFactory(ModelFactory[RuleSchema]):
     """Factory."""

@@ -1,8 +1,9 @@
+
 api_version: 1.0
 
-id: simple-scanner
-name: Simple Scanner
-namespace: boostsecurityio/simple-scanner
+id: duplicate-module
+name: Duplicate Module
+namespace: invalids/duplicate-module
 server_side: true
 
 config:

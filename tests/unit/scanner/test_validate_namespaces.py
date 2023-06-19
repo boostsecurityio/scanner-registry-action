@@ -5,7 +5,9 @@ from uuid import uuid4
 
 import pytest
 import yaml
+from faker import Faker
 
+from boostsec.registry_validator.schema import ModuleSchema
 from boostsec.registry_validator.testing.factories import ModuleSchemaFactory
 from boostsec.registry_validator.validate_namespaces import (
     find_module_yaml,
@@ -15,6 +17,8 @@ from boostsec.registry_validator.validate_namespaces import (
     validate_namespaces,
     validate_unique_namespace,
 )
+
+faker = Faker()
 
 
 def _create_module_yaml(tmp_path: Path, namespace: str = "") -> None:
@@ -29,7 +33,7 @@ def _create_module_yaml(tmp_path: Path, namespace: str = "") -> None:
         "id": "example-diff-sarif",
         "name": "Example Sarif Scanner",
         "config": {"support_diff_scan": True},
-        "steps": [],
+        "steps": ["step"],
     }
     if namespace:
         module_obj["namespace"] = namespace
@@ -105,11 +109,73 @@ def test_validate_unique_namespace(
     assert expected == out
 
 
-def test_validate_namespaces(create_unique_modules: Path) -> None:
-    """Test validate_namespaces_from_module_yaml."""
-    modules_path = find_module_yaml(create_unique_modules)
-    modules = [validate_module_yaml_schema(module) for module in modules_path]
-    validate_namespaces(modules, [])
+@pytest.mark.parametrize(
+    ("modules", "rules_realms", "server_modules", "unique", "expected"),
+    [
+        ([], [], [], True, ""),
+        (
+            ModuleSchemaFactory.batch(2),
+            [faker.pystr(), faker.pystr()],
+            ModuleSchemaFactory.batch(1),
+            True,
+            "",
+        ),
+        (
+            ModuleSchemaFactory.batch(2, namespace="a"),
+            [],
+            [],
+            False,
+            "ERROR: namespaces are not unique, duplicate: a\n",
+        ),
+        (
+            [],
+            ["a", "a"],
+            [],
+            False,
+            "ERROR: namespaces are not unique, duplicate: a\n",
+        ),
+        (
+            [],
+            [],
+            ModuleSchemaFactory.batch(2, namespace="a"),
+            False,
+            "ERROR: namespaces are not unique, duplicate: a\n",
+        ),
+        (
+            ModuleSchemaFactory.batch(1, namespace="a"),
+            ["a"],
+            [],
+            False,
+            "ERROR: namespaces are not unique, duplicate: a\n",
+        ),
+        (
+            ModuleSchemaFactory.batch(1, namespace="a"),
+            [],
+            ModuleSchemaFactory.batch(1, namespace="a"),
+            False,
+            "ERROR: namespaces are not unique, duplicate: a\n",
+        ),
+    ],
+)
+def test_validate_namespaces(
+    capfd: pytest.CaptureFixture[str],
+    modules: list[ModuleSchema],
+    rules_realms: list[str],
+    server_modules: list[ModuleSchema],
+    unique: bool,
+    expected: str,
+) -> None:
+    """Should identify duplicate between modules, rules realm and server modules."""
+    call = partial(validate_namespaces, modules, rules_realms, server_modules)
+
+    if unique:
+        call()
+    else:
+        with pytest.raises(SystemExit):
+            call()
+
+    out, _ = capfd.readouterr()
+    assert expected == out
 
 
 def test_validate_namespaces_without_namespace(
@@ -122,33 +188,3 @@ def test_validate_namespaces_without_namespace(
         [validate_module_yaml_schema(module) for module in modules_path]
     out, _ = capfd.readouterr()
     assert "module.yaml is invalid: namespace is a required property" in out
-
-
-@pytest.mark.parametrize(
-    ("rules_ns", "unique", "expected"),
-    [
-        ([], True, ""),
-        (["test4", "test5"], True, ""),
-        (["test1"], False, "ERROR: namespaces are not unique, duplicate: test1\n"),
-    ],
-)
-def test_validate_namespaces_with_rules_realm(
-    create_unique_modules: Path,
-    rules_ns: list[str],
-    unique: bool,
-    expected: str,
-    capfd: pytest.CaptureFixture[str],
-) -> None:
-    """Should identify duplicate between modules & rules realm."""
-    modules_path = find_module_yaml(create_unique_modules)
-    modules = [validate_module_yaml_schema(module) for module in modules_path]
-
-    call = partial(validate_namespaces, modules, rules_ns)
-    if unique:
-        call()
-    else:
-        with pytest.raises(SystemExit):
-            call()
-
-    out, _ = capfd.readouterr()
-    assert expected == out

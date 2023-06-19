@@ -2,7 +2,7 @@
 import os
 from typing import Any, Optional
 
-from pydantic import AnyHttpUrl, BaseModel, Field, validator
+from pydantic import AnyHttpUrl, BaseModel, Field, root_validator, validator
 
 
 class ModuleConfigSchema(BaseModel):
@@ -18,8 +18,18 @@ class ModuleSchema(BaseModel):
     id_: str = Field(..., alias="id")
     name: str
     namespace: str
+    server_side: Optional[bool]
     config: ModuleConfigSchema
-    steps: list[Any]  # steps aren't currently validated
+    steps: Optional[list[Any]]  # steps aren't currently validated
+
+    @root_validator
+    @classmethod
+    def validate_server_side(cls, field_values: dict[str, Any]) -> dict[str, Any]:
+        """Validate module without steps must be server-side."""
+        if not field_values.get("steps") and not field_values.get("server_side"):
+            raise ValueError("Module without steps must be server side.")
+
+        return field_values
 
 
 class RuleSchema(BaseModel):
