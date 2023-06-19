@@ -6,10 +6,12 @@ from uuid import uuid4
 import pytest
 import yaml
 
+from boostsec.registry_validator.testing.factories import ModuleSchemaFactory
 from boostsec.registry_validator.validate_namespaces import (
     find_module_yaml,
     find_rules_realm_namespace,
     get_module_namespaces,
+    validate_module_yaml_schema,
     validate_namespaces,
     validate_unique_namespace,
 )
@@ -65,10 +67,12 @@ def test_find_rules_realm_namespace(rules_realm_path: Path) -> None:
     assert sorted(find_rules_realm_namespace(rules_realm_path)) == sorted(namespaces)
 
 
-def test_get_module_namespaces(create_unique_modules: Path) -> None:
+def test_get_module_namespaces() -> None:
     """Should return the namespaces from the modules.yaml files."""
-    modules = find_module_yaml(create_unique_modules)
-    assert sorted(get_module_namespaces(modules)) == sorted(["test1", "test2", "test3"])
+    expected_ns = ["test1", "test2", "test3"]
+    modules = [ModuleSchemaFactory.build(namespace=ns) for ns in expected_ns]
+
+    assert sorted(get_module_namespaces(modules)) == sorted(expected_ns)
 
 
 @pytest.mark.parametrize(
@@ -103,7 +107,8 @@ def test_validate_unique_namespace(
 
 def test_validate_namespaces(create_unique_modules: Path) -> None:
     """Test validate_namespaces_from_module_yaml."""
-    modules = find_module_yaml(create_unique_modules)
+    modules_path = find_module_yaml(create_unique_modules)
+    modules = [validate_module_yaml_schema(module) for module in modules_path]
     validate_namespaces(modules, [])
 
 
@@ -112,11 +117,11 @@ def test_validate_namespaces_without_namespace(
 ) -> None:
     """Test validate_namespaces_from_module_yaml."""
     _create_module_yaml(tmp_path)
-    modules = find_module_yaml(tmp_path)
+    modules_path = find_module_yaml(tmp_path)
     with pytest.raises(SystemExit):
-        validate_namespaces(modules, [])
+        [validate_module_yaml_schema(module) for module in modules_path]
     out, _ = capfd.readouterr()
-    assert "ERROR: namespace not found in" in out
+    assert "module.yaml is invalid: namespace is a required property" in out
 
 
 @pytest.mark.parametrize(
@@ -135,7 +140,8 @@ def test_validate_namespaces_with_rules_realm(
     capfd: pytest.CaptureFixture[str],
 ) -> None:
     """Should identify duplicate between modules & rules realm."""
-    modules = find_module_yaml(create_unique_modules)
+    modules_path = find_module_yaml(create_unique_modules)
+    modules = [validate_module_yaml_schema(module) for module in modules_path]
 
     call = partial(validate_namespaces, modules, rules_ns)
     if unique:

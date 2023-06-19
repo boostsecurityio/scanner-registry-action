@@ -1,5 +1,4 @@
 """Validate namespaces integration tests."""
-import re
 from pathlib import Path
 
 import pytest
@@ -71,7 +70,8 @@ def test_main_invalid_module(
     registry_path: Path, cli_runner: CliRunner, use_sample: UseSample
 ) -> None:
     """Test main with repeated namespaces."""
-    use_sample("scanners/invalids/missing-namespace")
+    sample = "scanners/invalids/missing-namespace"
+    use_sample(sample)
     result = cli_runner.invoke(
         app,
         [
@@ -80,4 +80,7 @@ def test_main_invalid_module(
         ],
     )
     assert result.exit_code == 1
-    assert len(re.findall(r"ERROR: .* is a required property in", result.stdout)) == 1
+    assert (
+        f"ERROR: {registry_path/sample/'module.yaml'} is invalid:"
+        " namespace is a required property" in result.stdout
+    )
