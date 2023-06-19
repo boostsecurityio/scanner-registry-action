@@ -1,5 +1,6 @@
 """Test for scanners & rules schemas."""
 
+
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from pydantic import ValidationError

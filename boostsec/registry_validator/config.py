@@ -12,6 +12,7 @@ class RegistryConfig(BaseModel):
 
     scanners_path: Path
     rules_realm_path: Path
+    server_side_scanners_path: Path
 
     @classmethod
     def from_registry(cls, registry_path: Path) -> "RegistryConfig":
@@ -19,4 +20,5 @@ class RegistryConfig(BaseModel):
         return cls(
             scanners_path=registry_path / "scanners",
             rules_realm_path=registry_path / "rules-realm",
+            server_side_scanners_path=registry_path / "server-side-scanners",
         )

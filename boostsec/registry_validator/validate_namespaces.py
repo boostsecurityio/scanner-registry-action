@@ -1,7 +1,7 @@
 """Validates that namespaces are unique."""
 import sys
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Union, cast
 
 import typer
 import yaml
@@ -10,7 +10,7 @@ from pydantic import ValidationError
 from boostsec.registry_validator.config import RegistryConfig
 from boostsec.registry_validator.errors import format_validation_error
 from boostsec.registry_validator.parameters import RegistryPath
-from boostsec.registry_validator.schema import ModuleSchema
+from boostsec.registry_validator.schema import ModuleSchema, ServerSideModuleSchema
 
 app = typer.Typer()
 
@@ -37,7 +37,9 @@ def find_rules_realm_namespace(rules_realm_path: Path) -> list[str]:
     ]
 
 
-def get_module_namespaces(modules_list: list[ModuleSchema]) -> list[str]:
+def get_module_namespaces(
+    modules_list: Union[list[ModuleSchema], list[ServerSideModuleSchema]],
+) -> list[str]:
     """Return the namespaces for each modules."""
     return [module.namespace for module in modules_list]
 
@@ -68,12 +70,31 @@ def validate_module_yaml_schema(module: Path) -> ModuleSchema:
     return schema
 
 
+def validate_server_side_module(module: Path) -> ServerSideModuleSchema:
+    """Validate and load the module.yaml schema."""
+    module_yaml = yaml.safe_load(module.read_text())
+    try:
+        schema = ServerSideModuleSchema.parse_obj(module_yaml)
+    except ValidationError as e:
+        _log_error_and_exit(
+            f"{module} is invalid: "
+            + "\t\n".join(
+                format_validation_error(cast(dict[str, Any], err)) for err in e.errors()
+            )
+        )
+
+    return schema
+
+
 def validate_namespaces(
-    modules_list: list[ModuleSchema], rule_namespaces: list[str]
+    modules_list: list[ModuleSchema],
+    rule_namespaces: list[str],
+    server_modules: list[ServerSideModuleSchema],
 ) -> None:
     """Validate the namespaces are unique between modules & rules realm."""
     module_namespaces = get_module_namespaces(modules_list)
-    validate_unique_namespace(module_namespaces + rule_namespaces)
+    server_namespaces = get_module_namespaces(server_modules)
+    validate_unique_namespace(module_namespaces + rule_namespaces + server_namespaces)
 
 
 @app.command()
@@ -85,8 +106,10 @@ def main(
     print("Validating namespaces...")
     modules_list = find_module_yaml(config.scanners_path)
     rule_namespaces = find_rules_realm_namespace(config.rules_realm_path)
+    server_list = find_module_yaml(config.server_side_scanners_path)
     modules = [validate_module_yaml_schema(module) for module in modules_list]
-    validate_namespaces(modules, rule_namespaces)
+    server_modules = [validate_server_side_module(module) for module in server_list]
+    validate_namespaces(modules, rule_namespaces, server_modules)
     print("Namespaces are unique.")
 
 

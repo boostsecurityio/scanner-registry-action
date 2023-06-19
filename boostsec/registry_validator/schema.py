@@ -5,21 +5,30 @@ from typing import Any, Optional
 from pydantic import AnyHttpUrl, BaseModel, Field, validator
 
 
+class ModuleBaseSchema(BaseModel):
+    """Base for scanner modules."""
+
+    name: str
+    namespace: str
+
+
 class ModuleConfigSchema(BaseModel):
     """Representation of a module config."""
 
     support_diff_scan: bool
 
 
-class ModuleSchema(BaseModel):
+class ModuleSchema(ModuleBaseSchema):
     """Representation of a module file content."""
 
     api_version: int
     id_: str = Field(..., alias="id")
-    name: str
-    namespace: str
     config: ModuleConfigSchema
     steps: list[Any]  # steps aren't currently validated
+
+
+class ServerSideModuleSchema(ModuleBaseSchema):
+    """Representation of a server-side module file content."""
 
 
 class RuleSchema(BaseModel):

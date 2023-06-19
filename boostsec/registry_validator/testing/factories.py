@@ -4,13 +4,24 @@ from typing import cast
 from pydantic_factories import ModelFactory, Use
 
 from boostsec.registry_validator.models import RuleRealmNamespace, ScannerNamespace
-from boostsec.registry_validator.schema import ModuleSchema, RuleSchema, RulesDbSchema
+from boostsec.registry_validator.schema import (
+    ModuleSchema,
+    RuleSchema,
+    RulesDbSchema,
+    ServerSideModuleSchema,
+)
 
 
 class ModuleSchemaFactory(ModelFactory[ModuleSchema]):
     """Factory."""
 
     __model__ = ModuleSchema
+
+
+class ServerSideModuleSchemaFactory(ModelFactory[ServerSideModuleSchema]):
+    """Factory."""
+
+    __model__ = ServerSideModuleSchema
 
 
 class RuleSchemaFactory(ModelFactory[RuleSchema]):

@@ -9,3 +9,4 @@ def test_registry_config_from_path(tmp_path: Path) -> None:
     config = RegistryConfig.from_registry(tmp_path)
     assert config.scanners_path == tmp_path / "scanners"
     assert config.rules_realm_path == tmp_path / "rules-realm"
+    assert config.server_side_scanners_path == tmp_path / "server-side-scanners"

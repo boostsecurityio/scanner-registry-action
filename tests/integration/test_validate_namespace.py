@@ -37,6 +37,20 @@ def test_main(
             ("rules-realm/invalids/duplicate-module", "scanners/invalids/duplicate-a"),
             id="between-scanners-and-realm",
         ),
+        pytest.param(
+            (
+                "scanners/invalids/duplicate-a",
+                "server-side-scanners/invalids/duplicate-a",
+            ),
+            id="between-scanners-and-server-side",
+        ),
+        pytest.param(
+            (
+                "server-side-scanners/invalids/duplicate-a",
+                "server-side-scanners/invalids/duplicate-b",
+            ),
+            id="between-server-side",
+        ),
     ],
 )
 def test_main_repeated_namespaces(
@@ -47,7 +61,7 @@ def test_main_repeated_namespaces(
 ) -> None:
     """Test main with repeated namespaces.
 
-    Namespaces should be unique across scanners and rules-realm.
+    Namespaces should be unique across scanners, rules-realm and server-side.
     """
     for sample in samples:
         use_sample(sample)
@@ -66,11 +80,17 @@ def test_main_repeated_namespaces(
     )
 
 
+@pytest.mark.parametrize(
+    "sample",
+    [
+        "scanners/invalids/missing-namespace",
+        "server-side-scanners/invalids/missing-namespace",
+    ],
+)
 def test_main_invalid_module(
-    registry_path: Path, cli_runner: CliRunner, use_sample: UseSample
+    registry_path: Path, cli_runner: CliRunner, use_sample: UseSample, sample: str
 ) -> None:
     """Test main with repeated namespaces."""
-    sample = "scanners/invalids/missing-namespace"
     use_sample(sample)
     result = cli_runner.invoke(
         app,
@@ -84,3 +104,35 @@ def test_main_invalid_module(
         f"ERROR: {registry_path/sample/'module.yaml'} is invalid:"
         " namespace is a required property" in result.stdout
     )
+
+
+def test_main_server_side_scanner(
+    registry_path: Path, cli_runner: CliRunner, use_sample: UseSample
+) -> None:
+    """Test main with a valid server-side scanner."""
+    use_sample("server-side-scanners/boostsecurityio/simple-scanner")
+    result = cli_runner.invoke(
+        app,
+        [
+            "--registry-path",
+            str(registry_path),
+        ],
+    )
+    assert result.exit_code == 0
+    assert result.stdout == "Validating namespaces...\nNamespaces are unique.\n"
+
+
+def test_main_invalid_server_side_scanner(
+    registry_path: Path, cli_runner: CliRunner, use_sample: UseSample
+) -> None:
+    """Test main with a invalid server-side scanner."""
+    use_sample("server-side-scanners/boostsecurityio/simple-scanner")
+    result = cli_runner.invoke(
+        app,
+        [
+            "--registry-path",
+            str(registry_path),
+        ],
+    )
+    assert result.exit_code == 0
+    assert result.stdout == "Validating namespaces...\nNamespaces are unique.\n"
