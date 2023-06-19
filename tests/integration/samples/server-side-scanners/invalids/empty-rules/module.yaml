@@ -1,0 +1,11 @@
+
+api_version: 1.0
+
+id: empty-rules
+name: Empty Rules
+namespace: invalids/empty-rules
+
+config:
+  support_diff_scan: true
+  require_full_repo: false
+

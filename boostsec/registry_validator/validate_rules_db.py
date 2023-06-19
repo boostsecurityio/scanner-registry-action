@@ -1,24 +1,17 @@
 """Validates the Rules DB file."""
 import sys
+from itertools import chain
 from pathlib import Path
 from typing import Any, Dict, Sequence, cast
 
 import typer
 import yaml
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 
 from boostsec.registry_validator.config import RegistryConfig
 from boostsec.registry_validator.errors import format_validation_error
 from boostsec.registry_validator.parameters import RegistryPath
 from boostsec.registry_validator.schema import RulesDbSchema
-
-
-class RulesDbPath(BaseModel):
-    """Path to a RulesDB with the root path."""
-
-    root: Path
-    path: Path
-
 
 app = typer.Typer()
 
@@ -29,15 +22,15 @@ def _log_error_and_exit(message: str) -> None:
     sys.exit(1)
 
 
-def find_rules_db_yaml(config: RegistryConfig) -> list[RulesDbPath]:
+def find_rules_db_yaml(config: RegistryConfig) -> list[Path]:
     """Find rules.yaml files."""
-    return [
-        RulesDbPath(root=config.scanners_path, path=path)
-        for path in config.scanners_path.rglob("rules.yaml")
-    ] + [
-        RulesDbPath(root=config.rules_realm_path, path=path)
-        for path in config.rules_realm_path.rglob("rules.yaml")
-    ]
+    return list(
+        chain(
+            config.scanners_path.rglob("rules.yaml"),
+            config.rules_realm_path.rglob("rules.yaml"),
+            config.server_side_scanners_path.rglob("rules.yaml"),
+        )
+    )
 
 
 def _log_info(message: str) -> None:
@@ -125,10 +118,8 @@ def main(registry_path: Path = RegistryPath) -> None:
     config = RegistryConfig.from_registry(registry_path)
     if rules_db_list := find_rules_db_yaml(config):
         for rules_db_path in rules_db_list:
-            _log_info(
-                f"Validating {rules_db_path.path.relative_to(rules_db_path.root)}"
-            )
-            if rules_db := load_yaml_file(rules_db_path.path):
+            _log_info(f"Validating {rules_db_path.relative_to(registry_path)}")
+            if rules_db := load_yaml_file(rules_db_path):
                 validate_rules(rules_db, config)
             else:
                 _log_error_and_exit("Rules DB is empty")

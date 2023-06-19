@@ -6,7 +6,6 @@ import yaml
 
 from boostsec.registry_validator.config import RegistryConfig
 from boostsec.registry_validator.validate_rules_db import (
-    RulesDbPath,
     find_rules_db_yaml,
     load_yaml_file,
     validate_imports,
@@ -266,11 +265,15 @@ def test_find_rules_db_yaml(registry_config: RegistryConfig) -> None:
     realm = _create_module_rules(
         registry_config.rules_realm_path, "namespace2", VALID_RULES_DB_STRING
     )
+    server_side = _create_module_rules(
+        registry_config.server_side_scanners_path, "namespace3", VALID_RULES_DB_STRING
+    )
 
     result = find_rules_db_yaml(registry_config)
     assert result == [
-        RulesDbPath(root=registry_config.scanners_path, path=module / "rules.yaml"),
-        RulesDbPath(root=registry_config.rules_realm_path, path=realm / "rules.yaml"),
+        module / "rules.yaml",
+        realm / "rules.yaml",
+        server_side / "rules.yaml",
     ]
 
 
