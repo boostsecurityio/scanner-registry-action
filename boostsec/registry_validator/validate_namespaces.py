@@ -1,43 +1,16 @@
 """Validates that namespaces are unique."""
 import sys
 from pathlib import Path
+from typing import Any, cast
 
 import typer
 import yaml
-from jsonschema import validate
-from jsonschema.exceptions import ValidationError
+from pydantic import ValidationError
 
 from boostsec.registry_validator.config import RegistryConfig
+from boostsec.registry_validator.errors import format_validation_error
 from boostsec.registry_validator.parameters import RegistryPath
-
-MODULE_SCHEMA = """
-type: object
-properties:
-  api_version:
-    type: integer
-  id:
-    type: string
-  name:
-    type: string
-  namespace:
-    type: string
-  config:
-    type: object
-    properties:
-      support_diff_scan:
-        type: boolean
-    required:
-      - support_diff_scan
-  steps:
-    type: array
-required:
-  - api_version
-  - id
-  - name
-  - namespace
-  - config
-  - steps
-"""
+from boostsec.registry_validator.schema import ModuleSchema
 
 app = typer.Typer()
 
@@ -64,17 +37,9 @@ def find_rules_realm_namespace(rules_realm_path: Path) -> list[str]:
     ]
 
 
-def get_module_namespaces(modules_list: list[Path]) -> list[str]:
+def get_module_namespaces(modules_list: list[ModuleSchema]) -> list[str]:
     """Return the namespaces for each modules."""
-    namespaces = []
-    for module in modules_list:
-        if namespace := yaml.safe_load(module.read_text()).get("namespace"):
-            namespaces.append(namespace)
-        else:
-            module_relative_path = "/".join(str(module).split("/")[-4:])
-            _log_error_and_exit(f'namespace not found in "{module_relative_path}"')
-
-    return namespaces
+    return [module.namespace for module in modules_list]
 
 
 def validate_unique_namespace(namespaces: list[str]) -> None:
@@ -87,16 +52,25 @@ def validate_unique_namespace(namespaces: list[str]) -> None:
             unique_namespace.add(namespace)
 
 
-def validate_module_yaml_schema(module: Path) -> None:
-    """Validate the module.yaml schema."""
+def validate_module_yaml_schema(module: Path) -> ModuleSchema:
+    """Validate and load the module.yaml schema."""
     module_yaml = yaml.safe_load(module.read_text())
     try:
-        validate(module_yaml, yaml.safe_load(MODULE_SCHEMA))
-    except ValidationError as error:
-        _log_error_and_exit(f'{error.message} in "{module}"')
+        schema = ModuleSchema.parse_obj(module_yaml)
+    except ValidationError as e:
+        _log_error_and_exit(
+            f"{module} is invalid: "
+            + "\t\n".join(
+                format_validation_error(cast(dict[str, Any], err)) for err in e.errors()
+            )
+        )
+
+    return schema
 
 
-def validate_namespaces(modules_list: list[Path], rule_namespaces: list[str]) -> None:
+def validate_namespaces(
+    modules_list: list[ModuleSchema], rule_namespaces: list[str]
+) -> None:
     """Validate the namespaces are unique between modules & rules realm."""
     module_namespaces = get_module_namespaces(modules_list)
     validate_unique_namespace(module_namespaces + rule_namespaces)
@@ -111,9 +85,8 @@ def main(
     print("Validating namespaces...")
     modules_list = find_module_yaml(config.scanners_path)
     rule_namespaces = find_rules_realm_namespace(config.rules_realm_path)
-    for module in modules_list:
-        validate_module_yaml_schema(module)
-    validate_namespaces(modules_list, rule_namespaces)
+    modules = [validate_module_yaml_schema(module) for module in modules_list]
+    validate_namespaces(modules, rule_namespaces)
     print("Namespaces are unique.")
 
 

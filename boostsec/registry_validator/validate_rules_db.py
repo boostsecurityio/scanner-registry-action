@@ -8,6 +8,7 @@ import yaml
 from pydantic import BaseModel, ValidationError
 
 from boostsec.registry_validator.config import RegistryConfig
+from boostsec.registry_validator.errors import format_validation_error
 from boostsec.registry_validator.parameters import RegistryPath
 from boostsec.registry_validator.schema import RulesDbSchema
 
@@ -56,18 +57,6 @@ def load_yaml_file(file_path: Path) -> Any:
     return {}
 
 
-def _format_validation_error(e: dict[str, Any]) -> str:
-    error_type = e["type"]
-    loc = ".".join(str(loc) for loc in e["loc"])
-    if error_type == "value_error.missing":
-        return f"{loc} is a required property"
-    elif error_type == "value_error.extra":
-        return f"Additional properties are not allowed ({loc} was unexpected)"
-    else:
-        msg = e.get("msg", "unknown error")
-        return f"{loc}: {msg}"
-
-
 def validate_rules_db(rules_db: Dict[str, Any]) -> RulesDbSchema:
     """Validate rule is valid."""
     try:
@@ -76,8 +65,7 @@ def validate_rules_db(rules_db: Dict[str, Any]) -> RulesDbSchema:
         _log_error_and_exit(
             "Rules db is invalid: "
             + "\t\n".join(
-                _format_validation_error(cast(dict[str, Any], err))
-                for err in e.errors()
+                format_validation_error(cast(dict[str, Any], err)) for err in e.errors()
             )
         )
 
