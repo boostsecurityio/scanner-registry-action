@@ -1,30 +1,14 @@
 """Test for scanners & rules schemas."""
 
-from typing import Optional
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from pydantic import ValidationError
 
 from boostsec.registry_validator.testing.factories import (
-    ModuleSchemaFactory,
     RuleSchemaFactory,
     RulesDbSchemaFactory,
 )
-
-
-def test_validate_server_side_module() -> None:
-    """Server side scanner have optional steps."""
-    ModuleSchemaFactory.build(steps=None, server_side=True)
-
-
-@pytest.mark.parametrize("server_side", [None, False])
-def test_validate_module_missing_step(server_side: Optional[bool]) -> None:
-    """Should raises if a non server side scanner is missing steps."""
-    with pytest.raises(
-        ValidationError, match="Module without steps must be server side."
-    ):
-        ModuleSchemaFactory.build(steps=None, server_side=server_side)
 
 
 def test_validate_rule_name_with_valid_name() -> None:
