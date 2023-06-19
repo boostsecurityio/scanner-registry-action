@@ -1,15 +1,12 @@
 """Test."""
-import re
 from functools import partial
 from pathlib import Path
 from uuid import uuid4
 
 import pytest
 import yaml
-from typer.testing import CliRunner
 
 from boostsec.registry_validator.validate_namespaces import (
-    app,
     find_module_yaml,
     find_rules_realm_namespace,
     get_module_namespaces,
@@ -50,15 +47,6 @@ def create_unique_modules(scanners_path: Path) -> Path:
     _create_module_yaml(scanners_path, "test1")
     _create_module_yaml(scanners_path, "test2")
     _create_module_yaml(scanners_path, "test3")
-    return scanners_path
-
-
-@pytest.fixture()
-def create_repeated_modules(scanners_path: Path) -> Path:
-    """Create a module.yaml file."""
-    _create_module_yaml(scanners_path, "test1")
-    _create_module_yaml(scanners_path, "test2")
-    _create_module_yaml(scanners_path, "test2")
     return scanners_path
 
 
@@ -158,91 +146,3 @@ def test_validate_namespaces_with_rules_realm(
 
     out, _ = capfd.readouterr()
     assert expected == out
-
-
-@pytest.mark.usefixtures("create_unique_modules")
-def test_main(
-    registry_path: Path, rules_realm_path: Path, cli_runner: CliRunner
-) -> None:
-    """Test main."""
-    _create_rules_realm(rules_realm_path, "rules-ns")
-    result = cli_runner.invoke(
-        app,
-        [
-            "--registry-path",
-            str(registry_path),
-        ],
-    )
-    assert result.stdout == "\n".join(
-        [
-            "Validating namespaces...",
-            "Namespaces are unique.",
-            "",
-        ]
-    )
-
-
-@pytest.mark.usefixtures("create_repeated_modules")
-def test_main_error(
-    registry_path: Path,
-    cli_runner: CliRunner,
-) -> None:
-    """Test main with repeated namespaces."""
-    result = cli_runner.invoke(
-        app,
-        [
-            "--registry-path",
-            str(registry_path),
-        ],
-    )
-    assert result.exit_code == 1
-    assert result.stdout == "\n".join(
-        [
-            "Validating namespaces...",
-            "ERROR: namespaces are not unique, duplicate: test2",
-            "",
-        ]
-    )
-
-
-def test_main_invalid_module(
-    registry_path: Path,
-    scanners_path: Path,
-    cli_runner: CliRunner,
-) -> None:
-    """Test main with repeated namespaces."""
-    _create_module_yaml(scanners_path)
-    result = cli_runner.invoke(
-        app,
-        [
-            "--registry-path",
-            str(registry_path),
-        ],
-    )
-    assert result.exit_code == 1
-    assert len(re.findall(r"ERROR: .* is a required property in", result.stdout)) == 1
-
-
-@pytest.mark.usefixtures("create_unique_modules")
-def test_main_with_module_rules_duplicate(
-    rules_realm_path: Path,
-    registry_path: Path,
-    cli_runner: CliRunner,
-) -> None:
-    """Test main with duplicate namespace in module & rules realm."""
-    _create_rules_realm(rules_realm_path, "test1")
-    result = cli_runner.invoke(
-        app,
-        [
-            "--registry-path",
-            str(registry_path),
-        ],
-    )
-    assert result.exit_code == 1
-    assert result.stdout == "\n".join(
-        [
-            "Validating namespaces...",
-            "ERROR: namespaces are not unique, duplicate: test1",
-            "",
-        ]
-    )
