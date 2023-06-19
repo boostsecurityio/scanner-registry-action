@@ -267,10 +267,16 @@ def main(
     """Process a rule database."""
     config = RegistryConfig.from_registry(registry_path)
     updated_scanners = find_updated_namespaces(registry_path, config.scanners_path)
+    updated_server_scanners = find_updated_namespaces(
+        registry_path, config.server_side_scanners_path
+    )
+    updated_scanners = updated_scanners | updated_server_scanners
     updated_realms = find_updated_namespaces(registry_path, config.rules_realm_path)
     updated_ns = updated_scanners | updated_realms
 
     scanners = load_scanners(config.scanners_path, updated_ns)
+    server_scanners = load_scanners(config.server_side_scanners_path, updated_ns)
+    scanners = scanners + server_scanners
     rules_realm = load_rules_realm(config.rules_realm_path, updated_ns)
     namespace_cache = make_namespace_cache(scanners, rules_realm)
     scanners_to_update = get_updated_scanners(scanners, namespace_cache)
