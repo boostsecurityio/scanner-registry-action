@@ -16,7 +16,7 @@ from boostsec.registry_validator.testing.factories import (
     RulesDbSchemaFactory,
     ScannerNamespaceFactory,
 )
-from boostsec.registry_validator.upload_rules_db import (  # find_updated_scanners,
+from boostsec.registry_validator.upload_rules_db import (
     find_updated_namespaces,
     get_updated_scanners,
     load_rules_realm,

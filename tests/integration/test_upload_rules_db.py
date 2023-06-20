@@ -3,6 +3,7 @@
 from pathlib import Path
 from urllib.parse import urljoin
 
+import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from requests_mock import Mocker
 from typer.testing import CliRunner
@@ -52,12 +53,20 @@ def test_main_no_module_to_update(
     assert result.stdout == "No module rules to update.\n"
 
 
+@pytest.mark.parametrize(
+    "sample",
+    [
+        "scanners/boostsecurityio/simple-scanner",
+        "server-side-scanners/boostsecurityio/simple-scanner",
+    ],
+)
 def test_main_simple_scanner(
     cli_runner: CliRunner,
     registry_path: Path,
     requests_mock: Mocker,
     commit_changes: CommitChanges,
     use_sample: UseSample,
+    sample: str,
 ) -> None:
     """Should parse and upload boostsecurityio/simple-scanner."""
     url = "https://my_endpoint/"
@@ -68,7 +77,7 @@ def test_main_simple_scanner(
         },
     )
 
-    use_sample("scanners/boostsecurityio/simple-scanner/")
+    use_sample(sample)
     commit_changes()
 
     result = cli_runner.invoke(
@@ -120,12 +129,20 @@ def test_main_simple_scanner(
     )
 
 
+@pytest.mark.parametrize(
+    "sample",
+    [
+        "scanners/boostsecurityio/simple-scanner",
+        "server-side-scanners/boostsecurityio/simple-scanner",
+    ],
+)
 def test_main_only_import(
     cli_runner: CliRunner,
     registry_path: Path,
     requests_mock: Mocker,
     commit_changes: CommitChanges,
     use_sample: UseSample,
+    sample: str,
 ) -> None:
     """Test importing rules & default."""
     url = "https://my_endpoint/"
@@ -136,7 +153,7 @@ def test_main_only_import(
         },
     )
 
-    use_sample("scanners/boostsecurityio/simple-scanner/")
+    use_sample(sample)
     use_sample("rules-realm/boostsecurityio/mitre-cwe")
     commit_changes()
 
@@ -218,12 +235,16 @@ def test_main_only_import(
     }
 
 
+@pytest.mark.parametrize(
+    "sample", ["scanners/others/only-import", "server-side-scanners/others/only-import"]
+)
 def test_main_rule_update_trigger_upload(
     cli_runner: CliRunner,
     registry_path: Path,
     requests_mock: Mocker,
     commit_changes: CommitChanges,
     use_sample: UseSample,
+    sample: str,
 ) -> None:
     """Test updating an imported rule-realm should update module using it."""
     url = "https://my_endpoint/"
@@ -235,7 +256,7 @@ def test_main_rule_update_trigger_upload(
     )
 
     use_sample("scanners/boostsecurityio/simple-scanner/")
-    use_sample("scanners/others/only-import")
+    use_sample(sample)
     commit_changes()
 
     use_sample("rules-realm/boostsecurityio/mitre-cwe")
@@ -458,12 +479,17 @@ def test_main_with_placeholder(
     }
 
 
+@pytest.mark.parametrize(
+    "sample",
+    ["scanners/others/missing-rules", "server-side-scanners/others/missing-rules"],
+)
 def test_main_module_missing_rules(
     cli_runner: CliRunner,
     registry_path: Path,
     requests_mock: Mocker,
     commit_changes: CommitChanges,
     use_sample: UseSample,
+    sample: str,
 ) -> None:
     """Should warn and exit if a module is missing a rules db."""
     url = "https://my_endpoint/"
@@ -474,7 +500,7 @@ def test_main_module_missing_rules(
         },
     )
 
-    use_sample("scanners/others/missing-rules")
+    use_sample(sample)
     commit_changes()
 
     result = cli_runner.invoke(
