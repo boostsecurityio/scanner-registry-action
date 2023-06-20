@@ -1,14 +1,22 @@
 """Test."""
 from functools import partial
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 import pytest
 import yaml
 from faker import Faker
 
-from boostsec.registry_validator.schema import ModuleSchema
-from boostsec.registry_validator.testing.factories import ModuleSchemaFactory
+from boostsec.registry_validator.schema import (
+    ModuleSchema,
+    ScanType,
+    ServerSideModuleSchema,
+)
+from boostsec.registry_validator.testing.factories import (
+    ModuleSchemaFactory,
+    ScannerNamespaceFactory,
+)
 from boostsec.registry_validator.validate_namespaces import (
     find_module_yaml,
     find_rules_realm_namespace,
@@ -21,7 +29,7 @@ from boostsec.registry_validator.validate_namespaces import (
 faker = Faker()
 
 
-def _create_module_yaml(tmp_path: Path, namespace: str = "") -> None:
+def _create_module_yaml(tmp_path: Path, namespace: str = "", **extra: Any) -> None:
     """Create a module.yaml file."""
     modules_path = tmp_path / uuid4().hex
     modules_path.mkdir()
@@ -34,6 +42,8 @@ def _create_module_yaml(tmp_path: Path, namespace: str = "") -> None:
         "name": "Example Sarif Scanner",
         "config": {"support_diff_scan": True},
         "steps": ["step"],
+        "scan_types": ["sast"],
+        **extra,
     }
     if namespace:
         module_obj["namespace"] = namespace
@@ -116,7 +126,7 @@ def test_validate_unique_namespace(
         (
             ModuleSchemaFactory.batch(2),
             [faker.pystr(), faker.pystr()],
-            ModuleSchemaFactory.batch(1),
+            ScannerNamespaceFactory.batch(1),
             True,
             "",
         ),
@@ -137,7 +147,7 @@ def test_validate_unique_namespace(
         (
             [],
             [],
-            ModuleSchemaFactory.batch(2, namespace="a"),
+            ScannerNamespaceFactory.batch(2, namespace="a"),
             False,
             "ERROR: namespaces are not unique, duplicate: a\n",
         ),
@@ -151,7 +161,7 @@ def test_validate_unique_namespace(
         (
             ModuleSchemaFactory.batch(1, namespace="a"),
             [],
-            ModuleSchemaFactory.batch(1, namespace="a"),
+            ScannerNamespaceFactory.batch(1, namespace="a"),
             False,
             "ERROR: namespaces are not unique, duplicate: a\n",
         ),
@@ -161,7 +171,7 @@ def test_validate_namespaces(
     capfd: pytest.CaptureFixture[str],
     modules: list[ModuleSchema],
     rules_realms: list[str],
-    server_modules: list[ModuleSchema],
+    server_modules: list[ServerSideModuleSchema],
     unique: bool,
     expected: str,
 ) -> None:
@@ -188,3 +198,31 @@ def test_validate_namespaces_without_namespace(
         [validate_module_yaml_schema(module) for module in modules_path]
     out, _ = capfd.readouterr()
     assert "module.yaml is invalid: namespace is a required property" in out
+
+
+@pytest.mark.parametrize(
+    ("scan_types", "expected"),
+    [
+        ([], "module.yaml is invalid: scan_types: at least 1 item is required"),
+        (
+            ["unknown"],
+            (
+                "module.yaml is invalid: scan_types.0 has an invalid value; "
+                f"permitted values are: {', '.join(ScanType)}"
+            ),
+        ),
+    ],
+)
+def test_validate_module_invalid_scan_types(
+    tmp_path: Path,
+    capfd: pytest.CaptureFixture[str],
+    scan_types: list[str],
+    expected: str,
+) -> None:
+    """Test should reject invalid scan types & print helpful error."""
+    _create_module_yaml(tmp_path, namespace="a", scan_types=scan_types)
+    modules_path = find_module_yaml(tmp_path)
+    with pytest.raises(SystemExit):
+        [validate_module_yaml_schema(module) for module in modules_path]
+    out, _ = capfd.readouterr()
+    assert expected in out

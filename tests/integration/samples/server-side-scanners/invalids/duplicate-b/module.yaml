@@ -1,3 +1,5 @@
 name: Duplicate Module
 namespace: invalids/duplicate-module
+scan_types:
+  - sast
 

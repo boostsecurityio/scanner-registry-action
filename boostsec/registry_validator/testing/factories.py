@@ -8,6 +8,7 @@ from boostsec.registry_validator.schema import (
     ModuleSchema,
     RuleSchema,
     RulesDbSchema,
+    ScanType,
     ServerSideModuleSchema,
 )
 
@@ -16,12 +17,14 @@ class ModuleSchemaFactory(ModelFactory[ModuleSchema]):
     """Factory."""
 
     __model__ = ModuleSchema
+    scan_types = Use(lambda: cast(list[ScanType], [ScanType.SAST]))
 
 
 class ServerSideModuleSchemaFactory(ModelFactory[ServerSideModuleSchema]):
     """Factory."""
 
     __model__ = ServerSideModuleSchema
+    scan_types = Use(lambda: cast(list[ScanType], [ScanType.SAST]))
 
 
 class RuleSchemaFactory(ModelFactory[RuleSchema]):

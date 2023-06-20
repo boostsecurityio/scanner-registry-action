@@ -3,6 +3,8 @@ api_version: 1.0
 
 id: missing-namespace
 name: Missing Namespace
+scan_types:
+  - sast
 
 config:
   support_diff_scan: true
