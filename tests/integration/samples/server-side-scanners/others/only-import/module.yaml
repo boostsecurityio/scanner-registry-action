@@ -1,10 +1,2 @@
-api_version: 1.0
-
-id: only-import
 name: Only Import
 namespace: others/only-import
-
-config:
-  support_diff_scan: true
-  require_full_repo: false
-

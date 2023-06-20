@@ -1,11 +1,2 @@
-
-api_version: 1.0
-
-id: missing-rules
 name: Missing Rules
 namespace: others/missing-rules
-
-config:
-  support_diff_scan: true
-  require_full_repo: false
-
