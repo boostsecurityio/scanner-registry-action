@@ -1,14 +1,31 @@
 """Test for scanners & rules schemas."""
 
 
+from typing import Optional
+
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from pydantic import ValidationError
 
+from boostsec.registry_validator.schema import ScanType
 from boostsec.registry_validator.testing.factories import (
+    ModuleSchemaFactory,
     RuleSchemaFactory,
     RulesDbSchemaFactory,
 )
+
+
+def test_validate_scan_types() -> None:
+    """Test all scan types can be parsed."""
+    module = ModuleSchemaFactory.build(scan_types=[t.value for t in ScanType])
+    assert module.scan_types == list(ScanType)
+
+
+@pytest.mark.parametrize("scan_types", [None, ["unknown"]])
+def test_validate_invalid_scan_types(scan_types: Optional[list[str]]) -> None:
+    """Should reject invalid types or if types are missing."""
+    with pytest.raises(ValidationError):
+        ModuleSchemaFactory.build(scan_types=scan_types)
 
 
 def test_validate_rule_name_with_valid_name() -> None:

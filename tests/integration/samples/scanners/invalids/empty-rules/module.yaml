@@ -4,6 +4,8 @@ api_version: 1.0
 id: empty-rules
 name: Empty Rules
 namespace: invalids/empty-rules
+scan_types:
+  - sast
 
 config:
   support_diff_scan: true

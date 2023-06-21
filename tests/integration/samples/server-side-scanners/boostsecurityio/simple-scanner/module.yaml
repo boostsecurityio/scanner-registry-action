@@ -1,2 +1,4 @@
 name: Simple Scanner
 namespace: boostsecurityio/simple-scanner
+scan_types:
+  - sast

@@ -4,6 +4,8 @@ api_version: 1.0
 id: duplicate-module
 name: Duplicate Module
 namespace: invalids/duplicate-module
+scan_types:
+  - sast
 
 config:
   support_diff_scan: true

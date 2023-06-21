@@ -1,8 +1,20 @@
 """Scanners & rules definition schemas."""
 import os
+from enum import Enum
 from typing import Any, Optional
 
 from pydantic import AnyHttpUrl, BaseModel, Field, validator
+
+
+class ScanType(str, Enum):
+    """Security types that a scanner can claim it produces."""
+
+    CICD = "cicd"
+    METADATA = "metadata"
+    SAST = "sast"
+    SBOM = "sbom"
+    SCA = "sca"
+    SCA_CONTAINER = "sca_container"
 
 
 class ModuleBaseSchema(BaseModel):
@@ -10,6 +22,7 @@ class ModuleBaseSchema(BaseModel):
 
     name: str
     namespace: str
+    scan_types: list[ScanType] = Field(..., min_items=1)
 
 
 class ModuleConfigSchema(BaseModel):
