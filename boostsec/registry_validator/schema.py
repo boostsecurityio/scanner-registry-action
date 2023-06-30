@@ -22,7 +22,6 @@ class ModuleBaseSchema(BaseModel):
 
     name: str
     namespace: str
-    scan_types: list[ScanType] = Field(..., min_items=1)
 
 
 class ModuleConfigSchema(BaseModel):
@@ -38,6 +37,7 @@ class ModuleSchema(ModuleBaseSchema):
     id_: str = Field(..., alias="id")
     config: ModuleConfigSchema
     steps: list[Any]  # steps aren't currently validated
+    scan_types: list[ScanType] = Field(..., min_items=1)
 
 
 class ServerSideModuleSchema(ModuleBaseSchema):

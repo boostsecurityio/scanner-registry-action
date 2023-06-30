@@ -1,4 +1,2 @@
 name: Empty Rules
 namespace: invalids/empty-rules
-scan_types:
-  - sast
