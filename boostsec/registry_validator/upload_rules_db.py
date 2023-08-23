@@ -1,7 +1,7 @@
 """Uploads the Rules DB file."""
 import sys
 from pathlib import Path
-from subprocess import check_call, check_output  # noqa: S404
+from subprocess import check_call, check_output
 from typing import cast
 from urllib.parse import urljoin
 
@@ -261,7 +261,7 @@ def upload_rules_db(
                 },
             },
         )
-    except Exception as e:  # noqa: WPS440
+    except Exception as e:  # noqa: BLE001
         _log_error_and_exit(f"Failed to upload rules: {e}.")
     else:
         if response["setRules"]["__typename"] != "RuleSuccessSchema":

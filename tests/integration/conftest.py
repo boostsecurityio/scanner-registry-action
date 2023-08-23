@@ -1,7 +1,7 @@
 """Conftest."""
 import shutil
 from pathlib import Path
-from subprocess import check_call  # noqa: S404
+from subprocess import check_call
 from typing import Callable
 
 import pytest
@@ -16,8 +16,9 @@ def registry_path(tmp_path: Path) -> Path:
     registry.mkdir(parents=True)
 
     check_call(["git", "init"], cwd=registry)  # noqa: S603 S607
-    check_call(  # noqa: S603 S607
-        ["git", "commit", "--allow-empty", "-m", "first commit"], cwd=registry
+    check_call(
+        ["git", "commit", "--allow-empty", "-m", "first commit"],  # noqa: S603 S607
+        cwd=registry,
     )
 
     return registry
@@ -32,8 +33,9 @@ def commit_changes(registry_path: Path) -> CommitChanges:
 
     def commit() -> None:
         check_call(["git", "add", "-A"], cwd=registry_path)  # noqa: S603 S607
-        check_call(  # noqa: S603 S607
-            ["git", "commit", "--allow-empty", "-am", "commit"], cwd=registry_path
+        check_call(
+            ["git", "commit", "--allow-empty", "-am", "commit"],  # noqa: S603 S607
+            cwd=registry_path,
         )
 
     return commit

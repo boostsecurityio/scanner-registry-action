@@ -1,6 +1,6 @@
 """Test."""
 from pathlib import Path
-from subprocess import check_call  # noqa: S404
+from subprocess import check_call
 from typing import Any, Optional
 from urllib.parse import urljoin
 
@@ -73,16 +73,17 @@ def _create_rules_realm(
 def _init_repo(git_root: Path) -> None:
     """Initialize an empty git repo."""
     check_call(["git", "init"], cwd=git_root)  # noqa: S603 S607 noboost
-    check_call(  # noqa: S603 S607 noboost
-        ["git", "commit", "--allow-empty", "-m", "first commit"], cwd=git_root
+    check_call(  # noboost
+        ["git", "commit", "--allow-empty", "-m", "first commit"],  # noqa: S603 S607
+        cwd=git_root,
     )
 
 
 def _commit_all_changes(git_root: Path, message: str = "commit") -> None:
     """Commit all changes in the git_root repo."""
     check_call(["git", "add", "-A"], cwd=git_root)  # noqa: S603 S607 noboost
-    check_call(  # noqa: S603 S607 noboost
-        ["git", "commit", "-am", message], cwd=git_root
+    check_call(  # noboost
+        ["git", "commit", "-am", message], cwd=git_root  # noqa: S603 S607
     )
 
 
@@ -266,7 +267,7 @@ def test_get_updated_scanners() -> None:
 def test_upload_rules_db(requests_mock: Mocker, with_default: bool) -> None:
     """Test upload_rules_db."""
     url = "https://my_endpoint/"
-    test_token = "my-random-key"  # noqa: S105
+    test_token = "my-random-key"
     rules = RuleSchemaFactory.batch(2)
     default = None
     if with_default:
