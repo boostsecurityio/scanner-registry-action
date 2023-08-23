@@ -518,3 +518,51 @@ def test_main_module_missing_rules(
     assert requests_mock.call_count == 0
     assert result.exit_code == 0
     assert "WARNING: rules.yaml not found in " in result.stdout
+
+
+@pytest.mark.parametrize(
+    "sample",
+    [
+        "scanners/others/path-and-namespace-mismatch",
+        "server-side-scanners/others/path-and-namespace-mismatch",
+    ],
+)
+def test_main_path_and_namespace_mismatch(
+    cli_runner: CliRunner,
+    registry_path: Path,
+    requests_mock: Mocker,
+    commit_changes: CommitChanges,
+    use_sample: UseSample,
+    sample: str,
+) -> None:
+    """Should warn if a module's path is not the same as its namespace."""
+    url = "https://my_endpoint/"
+    requests_mock.post(
+        urljoin(url, "/rules-management/graphql"),
+        json={
+            "data": {"setRules": {"__typename": "RuleSuccessSchema"}},
+        },
+    )
+
+    use_sample(sample)
+    commit_changes()
+
+    result = cli_runner.invoke(
+        app,
+        [
+            "--api-endpoint",
+            url,
+            "--api-token",
+            "my-token",
+            "--registry-path",
+            str(registry_path),
+        ],
+    )
+
+    assert requests_mock.call_count == 0
+    assert result.exit_code == 0
+    assert (
+        'WARNING: Scanner directory "others/path-and-namespace-mismatch" doesn\'t '
+        'match namespace "something-different-than-the-path". Skipping...'
+        in result.stdout
+    )

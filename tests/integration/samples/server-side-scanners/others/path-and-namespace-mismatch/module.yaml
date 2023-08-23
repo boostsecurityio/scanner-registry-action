@@ -1,0 +1,2 @@
+name: Path and Namespace Mismatch
+namespace: something-different-than-the-path

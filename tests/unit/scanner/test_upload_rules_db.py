@@ -1,7 +1,7 @@
 """Test."""
 from pathlib import Path
 from subprocess import check_call  # noqa: S404
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import urljoin
 
 import pytest
@@ -36,9 +36,10 @@ def _create_module_and_rules(
     rules_db_string: str,
     namespace: str = "",
     create_rules: bool = True,
+    module_path: Optional[Path] = None,
 ) -> Path:
     """Create a module.yaml file."""
-    modules_path = registry_path / namespace
+    modules_path = registry_path / (module_path or namespace)
     modules_path.mkdir(parents=True)
     module_yaml = modules_path / "module.yaml"
     module_obj = {
@@ -128,7 +129,8 @@ def test_load_scanners_default_values(scanners_path: Path) -> None:
     _create_module_and_rules(
         scanners_path,
         yaml.safe_dump(rules_db.dict()),
-        "default",
+        namespace="default",
+        module_path=Path("boostsecurityio/native-scanner"),
     )
 
     result = load_scanners(scanners_path, set())
