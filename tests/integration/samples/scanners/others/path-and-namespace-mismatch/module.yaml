@@ -1,0 +1,10 @@
+
+api_version: 1.0
+
+id: missing-rules
+name: Path and Namespace Mismatch
+namespace: something-different-than-the-path
+
+config:
+  support_diff_scan: true
+  require_full_repo: false

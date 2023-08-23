@@ -1,7 +1,7 @@
 """Uploads the Rules DB file."""
 import sys
 from pathlib import Path
-from subprocess import check_call, check_output  # noqa: S404
+from subprocess import check_call, check_output
 from typing import cast
 from urllib.parse import urljoin
 
@@ -81,15 +81,27 @@ def load_scanners(scanners_path: Path, updated_ns: set[str]) -> list[ScannerName
     """
     scanners = []
     for module_path in scanners_path.rglob("module.yaml"):
+        scanner_path = module_path.parent
+
         module_yaml = yaml.safe_load(module_path.read_text())
         namespace = module_yaml["namespace"]
         if namespace == "default":  # Support legacy default scanner name
             namespace = "boostsecurityio/native-scanner"
+
+        if namespace != str(scanner_path.relative_to(scanners_path)):
+            print(
+                "WARNING: Scanner directory "
+                f'"{scanner_path.relative_to(scanners_path)}" doesn\'t match namespace '
+                f'"{namespace}". Skipping...'
+            )
+            continue
+
         driver = module_yaml["name"]
-        rules_path = module_path.parent / "rules.yaml"
+        rules_path = scanner_path / "rules.yaml"
         if not rules_path.exists():
             print(f'WARNING: rules.yaml not found in "{namespace}". Skipping...')
             continue
+
         rules_db_yaml = yaml.safe_load(rules_path.read_text())
         rules = RulesDbSchema.parse_obj(rules_db_yaml)
         scanners.append(
@@ -249,7 +261,7 @@ def upload_rules_db(
                 },
             },
         )
-    except Exception as e:  # noqa: WPS440
+    except Exception as e:  # noqa: BLE001
         _log_error_and_exit(f"Failed to upload rules: {e}.")
     else:
         if response["setRules"]["__typename"] != "RuleSuccessSchema":

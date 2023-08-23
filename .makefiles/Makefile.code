@@ -13,13 +13,26 @@ upgrade: cruft.update update
 
 format:  ## Run code formatters
 format: .phony
-	poetry run isort .
+	poetry run ruff --select I --fix .
 	poetry run black .
 
 lint:  ## Run linters
 lint: .phony
+	@echo "Checking if poetry.lock is up-to-date with pyproject.toml"
+	@poetry lock --check
+	@echo "Checking for poetry.lock version."
+	@if ! grep 'lock-version = "2.0"' poetry.lock >/dev/null 2>&1; then \
+	    printf "\e[31mpoetry.lock is using an outdated lock-version. Ensure you have the latest poetry version.\e[0m\n"; \
+		exit 1; \
+	fi
+	@echo "Checking for .rej files."
+	@if [ `git ls-files '*.rej' | wc -l` -gt 0 ]; then \
+		printf "\e[31m.rej files found\e[0m\n"; \
+		exit 1; \
+	fi
+
 	poetry run mypy .
-	poetry run flake8 .
+	poetry run ruff .
 
 test: ## Run pytest
 test: .phony
