@@ -15,6 +15,9 @@ class ScanType(str, Enum):
     SBOM = "sbom"
     SCA = "sca"
     SCA_CONTAINER = "sca_container"
+    SECRETS = "secrets"
+    IAC = "iac"
+    SCI = "sci"
 
 
 class ModuleBaseSchema(BaseModel):
