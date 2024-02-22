@@ -18,6 +18,7 @@ class ScanType(str, Enum):
     SECRETS = "secrets"
     IAC = "iac"
     SCI = "sci"
+    LICENSE = "license"
 
 
 class ModuleBaseSchema(BaseModel):
