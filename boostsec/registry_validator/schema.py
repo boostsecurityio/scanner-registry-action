@@ -10,14 +10,15 @@ class ScanType(str, Enum):
     """Security types that a scanner can claim it produces."""
 
     CICD = "cicd"
+    IAC = "iac"
+    LICENSE = "license"
     METADATA = "metadata"
     SAST = "sast"
     SBOM = "sbom"
     SCA = "sca"
     SCA_CONTAINER = "sca_container"
-    SECRETS = "secrets"
-    IAC = "iac"
     SCI = "sci"
+    SECRETS = "secrets"
 
 
 class ModuleBaseSchema(BaseModel):
