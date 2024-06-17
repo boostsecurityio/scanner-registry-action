@@ -1,4 +1,5 @@
 """Test."""
+
 from pathlib import Path
 from subprocess import check_call
 from typing import Any, Optional
@@ -83,7 +84,8 @@ def _commit_all_changes(git_root: Path, message: str = "commit") -> None:
     """Commit all changes in the git_root repo."""
     check_call(["git", "add", "-A"], cwd=git_root)  # noqa: S603 S607 noboost
     check_call(  # noboost
-        ["git", "commit", "-am", message], cwd=git_root  # noqa: S603 S607
+        ["git", "commit", "-am", message],  # noqa: S603 S607
+        cwd=git_root,
     )
 
 
@@ -185,13 +187,17 @@ def test_make_namespace_cache() -> None:
     """
     scanners = ScannerNamespaceFactory.batch(2)
     realms = RuleRealmNamespaceFactory.batch(2)
-    cache = make_namespace_cache(scanners, realms)
+    server_scanners = ScannerNamespaceFactory.batch(2)
+    cache = make_namespace_cache(scanners, realms, server_scanners)
 
     for scanner in scanners:
         assert cache[scanner.namespace] == scanner
 
     for realm in realms:
         assert cache[realm.namespace] == realm
+
+    for scanner in server_scanners:
+        assert cache[scanner.namespace] == scanner
 
 
 def test_rollup() -> None:
@@ -213,7 +219,7 @@ def test_rollup() -> None:
     )
     n3 = ScannerNamespaceFactory.build(namespace="r3", imports=["r1", "r2"])
 
-    cache = make_namespace_cache([n1, n3], [n2])
+    cache = make_namespace_cache([n1, n3], [n2], [])
 
     n1_res = rollup(n1, cache)
     assert n1_res.rules == rules_1
@@ -253,7 +259,7 @@ def test_get_updated_scanners() -> None:
     )
     scanner_2 = ScannerNamespaceFactory.build(namespace="r3", imports=["r1", "r2"])
 
-    cache = make_namespace_cache([scanner_1, scanner_2], [rule_realm])
+    cache = make_namespace_cache([scanner_1, scanner_2], [rule_realm], [])
     result = get_updated_scanners([scanner_1, scanner_2], cache)
 
     assert len(result) == 1
