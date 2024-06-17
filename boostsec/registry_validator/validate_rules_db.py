@@ -1,4 +1,5 @@
 """Validates the Rules DB file."""
+
 import sys
 from itertools import chain
 from pathlib import Path
@@ -90,11 +91,14 @@ def _validate_imports(
 
     scanner_path = config.scanners_path / namespace / "rules.yaml"
     rules_realm_path = config.rules_realm_path / namespace / "rules.yaml"
+    server_scanner_path = config.server_side_scanners_path / namespace / "rules.yaml"
     data = {}
     if scanner_path.exists():
         data = load_yaml_file(scanner_path)
     elif rules_realm_path.exists():
         data = load_yaml_file(rules_realm_path)
+    elif server_scanner_path.exists():
+        data = load_yaml_file(server_scanner_path)
     else:
         _log_error_and_exit(f"Imported namespace {namespace} not found")
 

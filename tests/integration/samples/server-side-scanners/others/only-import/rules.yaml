@@ -1,3 +1,4 @@
 import:
   - boostsecurityio/mitre-cwe
   - boostsecurityio/simple-scanner
+  - boostsecurityio/simple-server-scanner

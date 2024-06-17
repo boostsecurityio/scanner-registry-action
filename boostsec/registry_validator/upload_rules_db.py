@@ -1,4 +1,5 @@
 """Uploads the Rules DB file."""
+
 import sys
 from pathlib import Path
 from subprocess import check_call, check_output
@@ -141,12 +142,16 @@ def load_rules_realm(
 
 
 def make_namespace_cache(
-    scanners: list[ScannerNamespace], rules_realm: list[RuleRealmNamespace]
+    scanners: list[ScannerNamespace],
+    rules_realm: list[RuleRealmNamespace],
+    server_side_scanners: list[ScannerNamespace],
 ) -> dict[str, NamespaceUnion]:
     """Create a map from scanners & rules realm with their namespace as key."""
-    return {scanner.namespace: scanner for scanner in scanners} | {
-        realm.namespace: realm for realm in rules_realm
-    }
+    return (
+        {scanner.namespace: scanner for scanner in server_side_scanners}
+        | {scanner.namespace: scanner for scanner in scanners}
+        | {realm.namespace: realm for realm in rules_realm}
+    )
 
 
 def rollup(
@@ -290,7 +295,7 @@ def main(
     server_scanners = load_scanners(config.server_side_scanners_path, updated_ns)
     scanners = scanners + server_scanners
     rules_realm = load_rules_realm(config.rules_realm_path, updated_ns)
-    namespace_cache = make_namespace_cache(scanners, rules_realm)
+    namespace_cache = make_namespace_cache(scanners, rules_realm, server_scanners)
     scanners_to_update = get_updated_scanners(scanners, namespace_cache)
 
     if len(scanners_to_update) == 0:

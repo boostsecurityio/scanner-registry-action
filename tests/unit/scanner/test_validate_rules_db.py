@@ -1,4 +1,5 @@
 """Test."""
+
 from pathlib import Path
 
 import pytest
@@ -375,6 +376,30 @@ def test_validate_rules_db_with_invalid_rules_db(
         validate_rules_db(yaml.safe_load(rule_str))
     out, _ = capfd.readouterr()
     assert out == "ERROR: Rules db is invalid: " + expected
+
+
+@pytest.mark.parametrize("source", ["scanners", "realm", "server-side"])
+def test_validate_imports(
+    source: str, capfd: pytest.CaptureFixture[str], registry_config: RegistryConfig
+) -> None:
+    """Should import the namespace from all 3 sources in the config."""
+    module = "namespace/module-a"
+    if source == "scanners":
+        _create_module_rules(
+            registry_config.scanners_path, module, VALID_RULES_DB_STRING
+        )
+    elif source == "realm":
+        _create_module_rules(
+            registry_config.rules_realm_path, module, VALID_RULES_DB_STRING
+        )
+    elif source == "server-side":
+        _create_module_rules(
+            registry_config.server_side_scanners_path, module, VALID_RULES_DB_STRING
+        )
+
+    validate_imports([module], registry_config)
+    out, _ = capfd.readouterr()
+    assert out == ""
 
 
 @pytest.mark.parametrize("from_realm", [True, False])

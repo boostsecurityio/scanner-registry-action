@@ -256,6 +256,7 @@ def test_main_rule_update_trigger_upload(
     )
 
     use_sample("scanners/boostsecurityio/simple-scanner/")
+    use_sample("server-side-scanners/boostsecurityio/simple-server-scanner/")
     use_sample(sample)
     commit_changes()
 

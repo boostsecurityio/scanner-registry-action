@@ -1,4 +1,5 @@
 """Validate rules tests."""
+
 from pathlib import Path
 
 import pytest
@@ -38,6 +39,7 @@ def test_main_with_valid_rules(
     [
         "scanners/others/only-import",
         "server-side-scanners/others/only-import",
+        "server-side-scanners/others/only-server-import",
     ],
 )
 def test_main_with_valid_imports(
@@ -47,6 +49,7 @@ def test_main_with_valid_imports(
     use_sample(sample)
     use_sample("scanners/boostsecurityio/simple-scanner")
     use_sample("rules-realm/boostsecurityio/mitre-cwe")
+    use_sample("server-side-scanners/boostsecurityio/simple-server-scanner")
 
     result = cli_runner.invoke(
         app,
@@ -62,6 +65,10 @@ def test_main_with_valid_imports(
     )
     assert (
         "Validating rules-realm/boostsecurityio/mitre-cwe/rules.yaml\n" in result.stdout
+    )
+    assert (
+        "Validating server-side-scanners/boostsecurityio/"
+        "simple-server-scanner/rules.yaml\n" in result.stdout
     )
 
 
