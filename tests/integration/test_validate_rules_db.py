@@ -66,6 +66,10 @@ def test_main_with_valid_imports(
     assert (
         "Validating rules-realm/boostsecurityio/mitre-cwe/rules.yaml\n" in result.stdout
     )
+    assert (
+        "Validating server-side-scanners/boostsecurityio/"
+        "simple-server-scanner/rules.yaml\n" in result.stdout
+    )
 
 
 @pytest.mark.parametrize(
