@@ -58,6 +58,8 @@ class RuleSchema(BaseModel):
     categories: list[str]
     ref: AnyHttpUrl
 
+    recommended: bool = False
+
     class Config:
         """Config."""
 

@@ -260,6 +260,7 @@ def upload_rules_db(
                             "name": rule.name,
                             "prettyName": rule.pretty_name,
                             "ref": rule.ref,
+                            "recommended": rule.recommended,
                         }
                         for rule in rules.values()
                     ],
