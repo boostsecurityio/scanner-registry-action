@@ -49,6 +49,7 @@ def test_main_no_module_to_update(
     )
 
     assert requests_mock.call_count == 0
+    print(result.stdout)
     assert result.exit_code == 0
     assert result.stdout == "No module rules to update.\n"
 
