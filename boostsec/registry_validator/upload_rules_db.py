@@ -105,6 +105,7 @@ def load_scanners(scanners_path: Path, updated_ns: set[str]) -> list[ScannerName
 
         rules_db_yaml = yaml.safe_load(rules_path.read_text())
         rules = RulesDbSchema.parse_obj(rules_db_yaml)
+
         scanners.append(
             ScannerNamespace(
                 namespace=namespace,
@@ -260,6 +261,7 @@ def upload_rules_db(
                             "name": rule.name,
                             "prettyName": rule.pretty_name,
                             "ref": rule.ref,
+                            "recommended": rule.recommended,
                         }
                         for rule in rules.values()
                     ],
@@ -294,9 +296,11 @@ def main(
     scanners = load_scanners(config.scanners_path, updated_ns)
     server_scanners = load_scanners(config.server_side_scanners_path, updated_ns)
     scanners = scanners + server_scanners
+
     rules_realm = load_rules_realm(config.rules_realm_path, updated_ns)
     namespace_cache = make_namespace_cache(scanners, rules_realm, server_scanners)
     scanners_to_update = get_updated_scanners(scanners, namespace_cache)
+
 
     if len(scanners_to_update) == 0:
         print("No module rules to update.")

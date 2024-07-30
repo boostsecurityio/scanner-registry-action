@@ -8,6 +8,7 @@ rules:
     name: my-rule-1
     pretty_name: My rule 1
     ref: "http://my.link.com"
+    recommended: true
   my-rule-2:
     categories:
       - ALL
@@ -17,3 +18,4 @@ rules:
     name: my-rule-2
     pretty_name: My rule 2
     ref: "http://my.link.com"
+ 

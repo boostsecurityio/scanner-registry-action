@@ -108,6 +108,7 @@ def test_main_simple_scanner(
                     "name": "my-rule-1",
                     "prettyName": "My rule 1",
                     "ref": "http://my.link.com",
+                    "recommended": True,
                 },
                 {
                     "categories": ["ALL", "category-2"],
@@ -117,7 +118,9 @@ def test_main_simple_scanner(
                     "name": "my-rule-2",
                     "prettyName": "My rule 2",
                     "ref": "http://my.link.com",
+                    "recommended": False,
                 },
+
             ],
         }
     }
@@ -188,6 +191,7 @@ def test_main_only_import(
                     "name": "CWE-1004",
                     "prettyName": "CWE-1004: Sensitive Cookie Without 'HttpOnly' Flag",
                     "ref": "https://cwe.mitre.org/data/definitions/1004.html",
+                    "recommended": False,
                 },
                 {
                     "categories": ["ALL", "boost-hardened"],
@@ -200,6 +204,7 @@ def test_main_only_import(
                         "Homoglyphs Presented to User"
                     ),
                     "ref": "https://cwe.mitre.org/data/definitions/1007.html",
+                    "recommended": False,
                 },
                 {
                     "categories": ["ALL", "category-1"],
@@ -209,6 +214,7 @@ def test_main_only_import(
                     "name": "my-rule-1",
                     "prettyName": "My rule 1",
                     "ref": "http://my.link.com",
+                    "recommended": True,
                 },
                 {
                     "categories": ["ALL", "category-2"],
@@ -218,6 +224,7 @@ def test_main_only_import(
                     "name": "my-rule-2",
                     "prettyName": "My rule 2",
                     "ref": "http://my.link.com",
+                    "recommended": False,
                 },
                 {
                     "categories": ["ALL", "boost-hardened"],
@@ -229,6 +236,7 @@ def test_main_only_import(
                         "CWE-UNKNOWN - Original rule did not map to a known CWE rule"
                     ),
                     "ref": "https://cwe.mitre.org/",
+                    "recommended": False,
                 },
             ],
         }
@@ -291,6 +299,7 @@ def test_main_rule_update_trigger_upload(
                     "name": "CWE-1004",
                     "prettyName": "CWE-1004: Sensitive Cookie Without 'HttpOnly' Flag",
                     "ref": "https://cwe.mitre.org/data/definitions/1004.html",
+                    "recommended": False,
                 },
                 {
                     "categories": ["ALL", "boost-hardened"],
@@ -303,6 +312,7 @@ def test_main_rule_update_trigger_upload(
                         "Homoglyphs Presented to User"
                     ),
                     "ref": "https://cwe.mitre.org/data/definitions/1007.html",
+                    "recommended": False,
                 },
                 {
                     "categories": ["ALL", "category-1"],
@@ -312,6 +322,7 @@ def test_main_rule_update_trigger_upload(
                     "name": "my-rule-1",
                     "prettyName": "My rule 1",
                     "ref": "http://my.link.com",
+                    "recommended": True,
                 },
                 {
                     "categories": ["ALL", "category-2"],
@@ -321,6 +332,7 @@ def test_main_rule_update_trigger_upload(
                     "name": "my-rule-2",
                     "prettyName": "My rule 2",
                     "ref": "http://my.link.com",
+                    "recommended": False,
                 },
                 {
                     "categories": ["ALL", "boost-hardened"],
@@ -332,6 +344,7 @@ def test_main_rule_update_trigger_upload(
                         "CWE-UNKNOWN - Original rule did not map to a known CWE rule"
                     ),
                     "ref": "https://cwe.mitre.org/",
+                    "recommended": False,
                 },
             ],
         }
@@ -386,6 +399,7 @@ def test_main_rule_import_overload(
                     "name": "CWE-1004",
                     "prettyName": "CWE-1004: Overload",
                     "ref": "https://cwe.mitre.org/data/definitions/1004.html",
+                    "recommended": False,
                 },
                 {
                     "categories": ["ALL", "boost-hardened"],
@@ -398,6 +412,7 @@ def test_main_rule_import_overload(
                         "of Homoglyphs Presented to User"
                     ),
                     "ref": "https://cwe.mitre.org/data/definitions/1007.html",
+                    "recommended": False,
                 },
                 {
                     "categories": ["ALL"],
@@ -407,6 +422,7 @@ def test_main_rule_import_overload(
                     "name": "CWE-OVERLOAD",
                     "prettyName": "CWE-OVERLOAD - Overload",
                     "ref": "https://cwe.mitre.org/",
+                    "recommended": False,
                 },
             ],
         }
@@ -465,6 +481,7 @@ def test_main_with_placeholder(
                     "name": "my-rule-1",
                     "prettyName": "My rule 1",
                     "ref": f"{doc_url}/a/b/c",
+                    "recommended": False,
                 },
                 {
                     "categories": ["ALL", "category-2"],
@@ -474,6 +491,7 @@ def test_main_with_placeholder(
                     "name": "my-rule-2",
                     "prettyName": "My rule 2",
                     "ref": f"{doc_url}/d/e/f",
+                    "recommended": False,
                 },
             ],
         },
