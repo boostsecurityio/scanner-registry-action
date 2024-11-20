@@ -1,4 +1,5 @@
 """Scanners & rules definition schemas."""
+
 import os
 from enum import Enum
 from typing import Any, Optional
@@ -39,8 +40,9 @@ class ModuleSchema(ModuleBaseSchema):
 
     api_version: int
     id_: str = Field(..., alias="id")
-    config: ModuleConfigSchema
-    steps: list[Any]  # steps aren't currently validated
+    config: Optional[ModuleConfigSchema] = None
+    includes: Optional[list[str]] = None
+    steps: Optional[list[Any]] = None
     scan_types: list[ScanType] = Field(..., min_items=1)
 
 
