@@ -226,3 +226,17 @@ def test_validate_module_invalid_scan_types(
         [validate_module_yaml_schema(module) for module in modules_path]
     out, _ = capfd.readouterr()
     assert expected in out
+
+
+def test_validate_module_missing_steps(
+    tmp_path: Path,
+    capfd: pytest.CaptureFixture[str],
+) -> None:
+    """Test should reject invalid scan types & print helpful error."""
+    _create_module_yaml(tmp_path, namespace="a", steps=None, includes=None)
+    modules_path = find_module_yaml(tmp_path)
+    with pytest.raises(SystemExit):
+        [validate_module_yaml_schema(module) for module in modules_path]
+    out, _ = capfd.readouterr()
+    expected = "at least one scan step must be defined"
+    assert expected in out

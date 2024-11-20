@@ -301,7 +301,6 @@ def main(
     namespace_cache = make_namespace_cache(scanners, rules_realm, server_scanners)
     scanners_to_update = get_updated_scanners(scanners, namespace_cache)
 
-
     if len(scanners_to_update) == 0:
         print("No module rules to update.")
         return None

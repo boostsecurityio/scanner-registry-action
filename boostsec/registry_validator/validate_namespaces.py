@@ -66,6 +66,14 @@ def validate_module_yaml_schema(module: Path) -> ModuleSchema:
                 format_validation_error(cast(dict[str, Any], err)) for err in e.errors()
             )
         )
+        raise  # pragma: nocover # unreachable
+
+    if schema.includes is None:
+        # this is a registry scanner module
+        if not schema.steps:
+            _log_error_and_exit(
+                f"{module} is invalid: at least one scan step must be defined"
+            )
 
     return schema
 

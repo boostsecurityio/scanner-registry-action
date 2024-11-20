@@ -120,7 +120,6 @@ def test_main_simple_scanner(
                     "ref": "http://my.link.com",
                     "recommended": False,
                 },
-
             ],
         }
     }
