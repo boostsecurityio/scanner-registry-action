@@ -61,6 +61,7 @@ class RuleSchema(BaseModel):
     ref: AnyHttpUrl
 
     recommended: bool = False
+    remediation: Optional[str] = None
 
     class Config:
         """Config."""
