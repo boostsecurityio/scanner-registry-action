@@ -262,6 +262,7 @@ def upload_rules_db(
                             "prettyName": rule.pretty_name,
                             "ref": rule.ref,
                             "recommended": rule.recommended,
+                            "remediation": rule.remediation,
                         }
                         for rule in rules.values()
                     ],

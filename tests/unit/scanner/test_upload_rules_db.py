@@ -321,6 +321,7 @@ def test_upload_rules_db(requests_mock: Mocker, with_default: bool) -> None:
                         "prettyName": rule.pretty_name,
                         "ref": rule.ref,
                         "recommended": rule.recommended,
+                        "remediation": rule.remediation,
                     }
                     for rule in rules
                 ],
