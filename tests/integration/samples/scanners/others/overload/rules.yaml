@@ -10,7 +10,7 @@ rules:
     name: CWE-1004
     pretty_name: 'CWE-1004: Overload'
     ref: https://cwe.mitre.org/data/definitions/1004.html
-  
+
 default:
   CWE-OVERLOAD:
     categories:

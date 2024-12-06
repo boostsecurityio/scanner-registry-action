@@ -19,3 +19,4 @@ rules:
     pretty_name: My rule 2
     ref: "http://my.link.com"
     recommended: False
+    remediation: Fix the issue

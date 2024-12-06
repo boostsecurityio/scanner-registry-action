@@ -109,6 +109,7 @@ def test_main_simple_scanner(
                     "prettyName": "My rule 1",
                     "ref": "http://my.link.com",
                     "recommended": True,
+                    "remediation": None,
                 },
                 {
                     "categories": ["ALL", "category-2"],
@@ -119,6 +120,7 @@ def test_main_simple_scanner(
                     "prettyName": "My rule 2",
                     "ref": "http://my.link.com",
                     "recommended": False,
+                    "remediation": "Fix the issue",
                 },
             ],
         }
@@ -191,6 +193,7 @@ def test_main_only_import(
                     "prettyName": "CWE-1004: Sensitive Cookie Without 'HttpOnly' Flag",
                     "ref": "https://cwe.mitre.org/data/definitions/1004.html",
                     "recommended": False,
+                    "remediation": None,
                 },
                 {
                     "categories": ["ALL", "boost-hardened"],
@@ -204,6 +207,7 @@ def test_main_only_import(
                     ),
                     "ref": "https://cwe.mitre.org/data/definitions/1007.html",
                     "recommended": False,
+                    "remediation": None,
                 },
                 {
                     "categories": ["ALL", "category-1"],
@@ -214,6 +218,7 @@ def test_main_only_import(
                     "prettyName": "My rule 1",
                     "ref": "http://my.link.com",
                     "recommended": True,
+                    "remediation": None,
                 },
                 {
                     "categories": ["ALL", "category-2"],
@@ -224,6 +229,7 @@ def test_main_only_import(
                     "prettyName": "My rule 2",
                     "ref": "http://my.link.com",
                     "recommended": False,
+                    "remediation": "Fix the issue",
                 },
                 {
                     "categories": ["ALL", "boost-hardened"],
@@ -236,6 +242,7 @@ def test_main_only_import(
                     ),
                     "ref": "https://cwe.mitre.org/",
                     "recommended": False,
+                    "remediation": None,
                 },
             ],
         }
@@ -299,6 +306,7 @@ def test_main_rule_update_trigger_upload(
                     "prettyName": "CWE-1004: Sensitive Cookie Without 'HttpOnly' Flag",
                     "ref": "https://cwe.mitre.org/data/definitions/1004.html",
                     "recommended": False,
+                    "remediation": None,
                 },
                 {
                     "categories": ["ALL", "boost-hardened"],
@@ -312,6 +320,7 @@ def test_main_rule_update_trigger_upload(
                     ),
                     "ref": "https://cwe.mitre.org/data/definitions/1007.html",
                     "recommended": False,
+                    "remediation": None,
                 },
                 {
                     "categories": ["ALL", "category-1"],
@@ -322,6 +331,7 @@ def test_main_rule_update_trigger_upload(
                     "prettyName": "My rule 1",
                     "ref": "http://my.link.com",
                     "recommended": True,
+                    "remediation": None,
                 },
                 {
                     "categories": ["ALL", "category-2"],
@@ -332,6 +342,7 @@ def test_main_rule_update_trigger_upload(
                     "prettyName": "My rule 2",
                     "ref": "http://my.link.com",
                     "recommended": False,
+                    "remediation": "Fix the issue",
                 },
                 {
                     "categories": ["ALL", "boost-hardened"],
@@ -344,6 +355,7 @@ def test_main_rule_update_trigger_upload(
                     ),
                     "ref": "https://cwe.mitre.org/",
                     "recommended": False,
+                    "remediation": None,
                 },
             ],
         }
@@ -399,6 +411,7 @@ def test_main_rule_import_overload(
                     "prettyName": "CWE-1004: Overload",
                     "ref": "https://cwe.mitre.org/data/definitions/1004.html",
                     "recommended": False,
+                    "remediation": None,
                 },
                 {
                     "categories": ["ALL", "boost-hardened"],
@@ -412,6 +425,7 @@ def test_main_rule_import_overload(
                     ),
                     "ref": "https://cwe.mitre.org/data/definitions/1007.html",
                     "recommended": False,
+                    "remediation": None,
                 },
                 {
                     "categories": ["ALL"],
@@ -422,6 +436,7 @@ def test_main_rule_import_overload(
                     "prettyName": "CWE-OVERLOAD - Overload",
                     "ref": "https://cwe.mitre.org/",
                     "recommended": False,
+                    "remediation": None,
                 },
             ],
         }
@@ -481,6 +496,7 @@ def test_main_with_placeholder(
                     "prettyName": "My rule 1",
                     "ref": f"{doc_url}/a/b/c",
                     "recommended": False,
+                    "remediation": None,
                 },
                 {
                     "categories": ["ALL", "category-2"],
@@ -491,6 +507,7 @@ def test_main_with_placeholder(
                     "prettyName": "My rule 2",
                     "ref": f"{doc_url}/d/e/f",
                     "recommended": False,
+                    "remediation": None,
                 },
             ],
         },
