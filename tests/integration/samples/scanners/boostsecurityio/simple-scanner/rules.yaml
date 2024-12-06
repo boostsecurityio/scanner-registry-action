@@ -18,4 +18,4 @@ rules:
     name: my-rule-2
     pretty_name: My rule 2
     ref: "http://my.link.com"
- 
+    remediation: "Fix the issue"
